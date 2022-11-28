@@ -2,11 +2,6 @@
 //  LimiterProcessor.h
 //
 
-
-#pragma once
-
-//#include "Biquad.h" // Used for HPF to prevent pumping from low-frequencies.
-
 class LimiterProcessor
 {
 public:
@@ -122,7 +117,6 @@ private:
     bool enhanceIsOn = true;
     
     bool autoCompIsOn = true;
-    
     
     void processAutoComp (AudioBuffer<float> & buffer, AudioBuffer<float> & delayedBuffer, const int numChannels, const int numSamples);
 

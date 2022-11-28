@@ -6,8 +6,9 @@
 
 LimiterProcessor::LimiterProcessor()
 {
-    setThreshold(-0.1f);
-    setKnee(1.5f);
+    float kneeTemp = 1.5f;
+    setThreshold(-0.1f - kneeTemp/2.f); // accounts for half of knee above thresh for limit level
+    setKnee(kneeTemp);
     setInputGain(0.f);
     setOutputGain(-0.1f);
 }
@@ -252,7 +253,6 @@ void LimiterProcessor::lookaheadDelay (AudioBuffer<float> & buffer, AudioBuffer<
     }
 }
 
-
 void LimiterProcessor::bypassDelay (AudioBuffer<float> & buffer, AudioBuffer<float> & delayedBuffer,
                                         const int numChannels, const int numSamples)
 {
@@ -360,13 +360,6 @@ void LimiterProcessor::setOversampling (bool isOn)
 void LimiterProcessor::setOfflineOS (bool isOn)
 {
     offlineOSOn = isOn;
-//    if (isOn)
-//    {
-//        upsampling.prepare(OSFactor, OSQuality);
-//        downsampling.prepare(OSFactor, OSQuality);
-//    }
-//    setAttack (attack);
-//    setRelease (release);
 }
 
 void LimiterProcessor::prepare(float sampleRate, int bufferSize)
