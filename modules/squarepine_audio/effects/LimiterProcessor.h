@@ -43,7 +43,8 @@ public:
     void setConstantGainMonitoring (bool isOn) {constantGainMonitoring = isOn;}
     void setOversampling (bool isOn);
     void setBypassed (bool bypass) {bypassed = bypass;}
-
+    void setEnhanceOn (bool isOn) {enhanceIsOn = isOn;}
+    
     float getGainReduction();
 
 private:
@@ -106,6 +107,7 @@ private:
     
     float enhanceProcess(float x);
     float enhanceAmount = 0.2f; // 20 % in Oxford Limiter
+    bool enhanceIsOn = true;
     
     void processAutoComp (AudioBuffer<float> & buffer, AudioBuffer<float> & delayedBuffer, const int numChannels, const int numSamples);
 

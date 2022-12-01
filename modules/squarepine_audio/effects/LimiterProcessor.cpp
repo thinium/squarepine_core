@@ -17,11 +17,20 @@ LimiterProcessor::LimiterProcessor()
 
 void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
 {
-    if (bypassed)
-        return;
     
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
+    
+    if (bypassed)
+    {
+        // Done to add identical latency to processing
+        lookaheadDelay (buffer, lookaheadBuffer, numChannels, numSamples);
+        fillTruePeakFrameBuffer (lookaheadBuffer, numChannels, numSamples);
+        for (int c = 0; c < numChannels ; ++c)
+            buffer.copyFrom (c,0,lookaheadBuffer.getWritePointer(c),numSamples);
+        
+        return;
+    }
     
     // Input Gain
     //buffer.applyGain (0, numSamples, inputGain); // not smoothed
@@ -159,8 +168,11 @@ void LimiterProcessor::processStereoSample (float xL, float xR, float detectSamp
     yL = linA * xL; // Apply to input signal for left channel
     yR = linA * xR; // Apply to input signal for right channel
     
-    yL = enhanceProcess (yL);
-    yR = enhanceProcess (yR);
+    if (enhanceIsOn)
+    {
+        yL = enhanceProcess (yL);
+        yR = enhanceProcess (yR);
+    }
     
     outputGainSmooth = 0.999f*outputGainSmooth + 0.001f*outputGain;
     yL *= outputGainSmooth;
@@ -212,7 +224,8 @@ float LimiterProcessor::processSample(float x, float detectSample, int channel)
 
     y = linA * x; // Apply to input signal
     
-    y = enhanceProcess (y);
+    if (enhanceIsOn)
+        y = enhanceProcess (y);
     
     return y * outputGain;
 }
