@@ -91,7 +91,6 @@ void CrushProcessor::prepareToPlay (double sampleRate, int bufferSize)
     bitCrusher.prepareToPlay (sampleRate, bufferSize);
     highPassFilter.setFilterType (DigitalFilter::FilterType::HPF);
     highPassFilter.setFs (sampleRate);
-
     dryBuffer = AudioBuffer<float> (2, bufferSize);
 }
 void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
@@ -132,10 +131,9 @@ bool CrushProcessor::supportsDoublePrecisionProcessing() const { return false; }
 void CrushProcessor::parameterValueChanged (int paramNum, float value)
 {
     const ScopedLock sl (getCallbackLock());
-    if (paramNum == 2)
-    {
-    }// wet/dry
-    else if (paramNum == 3)// "color"
+
+    if (paramNum == 2) {}// wet/dry
+    else if (paramNum == 3) // "color"
     {
         if (value <= 0.f)
         {
@@ -159,3 +157,4 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
 }
 
 }
+

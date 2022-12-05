@@ -31,12 +31,10 @@ private:
     AudioParameterBool* fxOnParam = nullptr;
 
     //bool isBypassed = false;
-
     int idNumber = 1;
 
     BitCrusherProcessor bitCrusher;
     DigitalFilter highPassFilter;
-
     AudioBuffer<float> dryBuffer;
 };
 
