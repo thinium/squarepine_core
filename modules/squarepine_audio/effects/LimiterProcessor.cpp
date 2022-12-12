@@ -6,9 +6,8 @@
 
 LimiterProcessor::LimiterProcessor()
 {
-    float kneeTemp = 1.5f;
-    setThreshold(-0.1f - kneeTemp/2.f); // accounts for half of knee above thresh for limit level
-    setKnee(kneeTemp);
+    setThreshold(-0.1f);
+    setKnee(1.5f);
     setInputGain(0.f);
     setOutputGain(-0.1f);
 }
