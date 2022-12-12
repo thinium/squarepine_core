@@ -42,8 +42,12 @@ public:
     
     void setConstantGainMonitoring (bool isOn) {constantGainMonitoring = isOn;}
     void setOversampling (bool isOn);
+    void setOfflineOS (bool isOn);
     void setBypassed (bool bypass) {bypassed = bypass;}
+    void setEnhanceAmount (float amount) {enhanceAmount = amount/100.f;} // convert from %
     void setEnhanceOn (bool isOn) {enhanceIsOn = isOn;}
+    void setTruePeakOn (bool isOn) {truePeakIsOn = isOn;}
+    void setAutoCompOn (bool isOn) {autoCompIsOn = isOn;}
     
     float getGainReduction();
 
@@ -81,6 +85,7 @@ private:
 
     std::atomic<float> linA = 1.0f; // Linear gain multiplied by the input signal at the end of the detection path
 
+    bool truePeakIsOn = true;
     static const int TPSIZE = 12;
     float tpAnalysisBuffer[TPSIZE] = {0.f};
     int tpIndex = 0;
@@ -94,6 +99,7 @@ private:
     int OSFactor = 2;
     static const int OSQuality = 3;
     bool overSamplingOn = true;
+    bool offlineOSOn = true;
     AudioBuffer<float> upbuffer;
     UpSampling2Stage upsampling;
     DownSampling2Stage downsampling;
@@ -105,9 +111,18 @@ private:
     AudioBuffer<float> lookaheadBuffer;
     void lookaheadDelay (AudioBuffer<float> & buffer, AudioBuffer<float> & delayedBuffer, const int numChannels, const int numSamples);
     
+    float bypassArray[LASIZE][2] = {{0.f}};
+    int indexBYRead[2] = {0};
+    int indexBYWrite[2] = {4800}; // .1 ms
+    AudioBuffer<float> bypassBuffer;
+    void bypassDelay (AudioBuffer<float> & buffer, AudioBuffer<float> & delayedBuffer, const int numChannels, const int numSamples);
+    
     float enhanceProcess(float x);
     float enhanceAmount = 0.2f; // 20 % in Oxford Limiter
     bool enhanceIsOn = true;
+    
+    bool autoCompIsOn = true;
+    
     
     void processAutoComp (AudioBuffer<float> & buffer, AudioBuffer<float> & delayedBuffer, const int numChannels, const int numSamples);
 

@@ -4,7 +4,6 @@ namespace djdawprocessor
 /// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
 
 class DubEchoProcessor final : public V10SendProcessor
-
 {
 public:
     //Constructor with ID
@@ -33,6 +32,18 @@ private:
     AudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+    
+    double sampleRate = 48000.0;
+    
+    FractionalDelay delayBlock;
+    float feedbackSample[2] = {0.f};
+    
+    DigitalFilter hpf;
+    DigitalFilter lpf;
+    
+    float gainSmooth[2] = {0.f};
+    float gain;
+    float wetSmooth[2] = {0.f};
 };
 
 }

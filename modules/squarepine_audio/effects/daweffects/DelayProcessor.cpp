@@ -64,11 +64,11 @@ void FractionalDelay::setDelaySamples (float _delay)
 {
     if (delay >= 1.f)
     {
-        this->delay = _delay;
+        delay = _delay;
     }
     else
     {
-        this->delay = 0.f;
+        delay = 0.f;
     }
 }
 

@@ -30,7 +30,7 @@ private:
     float delay = 5.f;
     float smoothDelay[2] = {5.f};
     
-    static const int MAX_BUFFER_SIZE = 192000;
+    static const int MAX_BUFFER_SIZE = 384000;
     float delayBuffer[MAX_BUFFER_SIZE][2] = {{0.0f}};
     int index[2] = {0};
     

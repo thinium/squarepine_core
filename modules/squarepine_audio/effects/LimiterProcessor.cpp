@@ -6,9 +6,8 @@
 
 LimiterProcessor::LimiterProcessor()
 {
-    float kneeTemp = 1.5f;
-    setThreshold(-0.1f - kneeTemp/2.f); // accounts for half of knee above thresh for limit level
-    setKnee(kneeTemp);
+    setThreshold(-0.1f);
+    setKnee(1.5f);
     setInputGain(0.f);
     setOutputGain(-0.1f);
 }
@@ -21,16 +20,7 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
     
-    if (bypassed)
-    {
-        // Done to add identical latency to processing
-        lookaheadDelay (buffer, lookaheadBuffer, numChannels, numSamples);
-        fillTruePeakFrameBuffer (lookaheadBuffer, numChannels, numSamples);
-        for (int c = 0; c < numChannels ; ++c)
-            buffer.copyFrom (c,0,lookaheadBuffer.getWritePointer(c),numSamples);
-        
-        return;
-    }
+    bypassDelay (buffer, bypassBuffer, numChannels, numSamples);
     
     // Input Gain
     //buffer.applyGain (0, numSamples, inputGain); // not smoothed
@@ -40,7 +30,16 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
     
     fillTruePeakFrameBuffer (lookaheadBuffer, numChannels, numSamples);
     
-    processAutoComp(buffer, lookaheadBuffer, numChannels, numSamples);
+    if (bypassed)
+    {
+        for (int c = 0; c < numChannels ; ++c)
+            buffer.copyFrom (c, 0, bypassBuffer.getWritePointer(c), numSamples);
+        
+        return;
+    }
+    
+    if (autoCompIsOn)
+        processAutoComp (buffer, lookaheadBuffer, numChannels, numSamples);
     
     if (numChannels == 2)
     {
@@ -253,6 +252,30 @@ void LimiterProcessor::lookaheadDelay (AudioBuffer<float> & buffer, AudioBuffer<
     }
 }
 
+
+void LimiterProcessor::bypassDelay (AudioBuffer<float> & buffer, AudioBuffer<float> & delayedBuffer,
+                                        const int numChannels, const int numSamples)
+{
+    float x;
+    for (int c = 0 ; c < numChannels ; ++c)
+    {
+        for (int n = 0 ; n < numSamples ; ++n)
+        {
+            x = buffer.getWritePointer (c)[n];
+            bypassArray[indexBYWrite[c]][c] = x;
+            delayedBuffer.getWritePointer (c)[n] = bypassArray[indexBYRead[c]][c];
+            
+            indexBYWrite[c]++;
+            if (indexBYWrite[c] >= LASIZE)
+                indexBYWrite[c] = 0;
+            
+            indexBYRead[c]++;
+            if (indexBYRead[c] >= LASIZE)
+                indexBYRead[c] = 0;
+        }
+    }
+}
+
 void LimiterProcessor::fillTruePeakFrameBuffer (AudioBuffer<float> inputBuffer, const int numChannels, const int numSamples)
 {
     if (numChannels == 2)
@@ -266,11 +289,13 @@ void LimiterProcessor::fillTruePeakFrameBuffer (AudioBuffer<float> inputBuffer, 
 
             tpAnalysisBuffer[tpIndex] = detectSample;
             
-            detectSample = truePeakAnalysis.analyzePhase1 (tpAnalysisBuffer,tpIndex);
-            detectSample = jmax (detectSample , truePeakAnalysis.analyzePhase2 (tpAnalysisBuffer,tpIndex));
-            detectSample = jmax (detectSample , truePeakAnalysis.analyzePhase3 (tpAnalysisBuffer,tpIndex));
-            detectSample = jmax (detectSample , truePeakAnalysis.analyzePhase4 (tpAnalysisBuffer,tpIndex));
-            
+            if (truePeakIsOn)
+            {
+                detectSample = truePeakAnalysis.analyzePhase1 (tpAnalysisBuffer,tpIndex);
+                detectSample = jmax (detectSample , truePeakAnalysis.analyzePhase2 (tpAnalysisBuffer,tpIndex));
+                detectSample = jmax (detectSample , truePeakAnalysis.analyzePhase3 (tpAnalysisBuffer,tpIndex));
+                detectSample = jmax (detectSample , truePeakAnalysis.analyzePhase4 (tpAnalysisBuffer,tpIndex));
+            }
             truePeakFrameBuffer.getWritePointer (0)[n] = detectSample;
             tpIndex++;
             if (tpIndex >= TPSIZE)
@@ -332,6 +357,18 @@ void LimiterProcessor::setOversampling (bool isOn)
     setRelease (release);
 }
 
+void LimiterProcessor::setOfflineOS (bool isOn)
+{
+    offlineOSOn = isOn;
+//    if (isOn)
+//    {
+//        upsampling.prepare(OSFactor, OSQuality);
+//        downsampling.prepare(OSFactor, OSQuality);
+//    }
+//    setAttack (attack);
+//    setRelease (release);
+}
+
 void LimiterProcessor::prepare(float sampleRate, int bufferSize)
 {
     Fs = sampleRate;
@@ -341,19 +378,24 @@ void LimiterProcessor::prepare(float sampleRate, int bufferSize)
     truePeakFrameBuffer = AudioBuffer<float> (1 , bufferSize);
     
     lookaheadBuffer = AudioBuffer<float> (2 , bufferSize); // (numChannels, numSamples)
+    bypassBuffer = AudioBuffer<float> (2 , bufferSize); // (numChannels, numSamples)
     
     upbuffer = AudioBuffer<float> (2 , bufferSize * OSFactor); // (numChannels, numSamples)
     upsampling.prepare(OSFactor, OSQuality);
     downsampling.prepare(OSFactor, OSQuality);
     
-    indexLARead[0] = 0; indexLARead[1] = 0;
+    
     int tempIndex = static_cast<int> (round(Fs*.1f)); // Write should be ahead of Read when indexing buffer
     indexLAWrite[0] = tempIndex; indexLAWrite[1] = tempIndex;
+    indexLARead[0] = 0; indexLARead[1] = 0;
+    
+    indexBYWrite[0] = tempIndex; indexBYWrite[1] = tempIndex;
+    indexBYRead[0] = 0; indexBYRead[1] = 0;
 }
 
 void LimiterProcessor::setThreshold(float threshold)
 {
-    thresh = jlimit (-64.0f, 0.0f, threshold);
+    thresh = jlimit (-64.0f, 0.0f, threshold - knee/2.f); // accounts for half of knee above thresh for limit level
     linThresh = pow (10.f,thresh/20.f);
 }
 
