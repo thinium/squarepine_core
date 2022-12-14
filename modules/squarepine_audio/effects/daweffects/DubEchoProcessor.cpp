@@ -87,14 +87,12 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
 
     setPrimaryParameter (wetDryParam);
     
-    enum FilterType {LPF, HPF, BPF1, BPF2, NOTCH, LSHELF, HSHELF, PEAK, APF};
-    
     hpf.setFilterType (DigitalFilter::FilterType::HPF);
     hpf.setFreq (400.f);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
     
-    float samplesOfDelay = timeParam->get()/1000.f * sampleRate;
+    float samplesOfDelay = timeParam->get()/1000.f * static_cast<float> (sampleRate);
     delayBlock.setDelaySamples (samplesOfDelay);
 }
 
@@ -140,14 +138,15 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
         for (int n = 0; n < numSamples ; ++n)
         {
             float x = buffer.getWritePointer(c) [n];
-            float y = x + wet * feedbackSample[c];
-            // DO FILTERING HERE
+            float y = x + wetSmooth[c] * feedbackSample[c];
+            
             auto y_filter = hpf.processSample(y,c);
             y_filter = lpf.processSample(y_filter,c);
             y_filter = hpf.processSample(y_filter,c);
             feedbackSample[c] = gainSmooth[c] * delayBlock.processSample(static_cast<float> (y_filter),c);
             
             gainSmooth[c] = 0.999f * gainSmooth[c] + 0.001f * feedbackGain;
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
             buffer.getWritePointer(c) [n] = y;
         }
     }

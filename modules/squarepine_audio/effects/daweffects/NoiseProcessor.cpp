@@ -34,28 +34,11 @@ NoiseProcessor::NoiseProcessor (int idNum)
                                                                    true,// isAutomatable
                                                                    "Colour ",
                                                                    AudioProcessorParameter::genericParameter,
-                                                                   [] (float value, int) -> String
-                                                                   {
-                                                                       String txt (roundToInt (value));
+                                                                   [] (float value, int) -> String {
+                                                                       String txt (roundToInt (100.f*value)/100.f);
                                                                        return txt;
                                                                        ;
                                                                    });
-
-    NormalisableRange<float> noiseRange = { -96.f, 6.0f };
-    auto noise = std::make_unique<NotifiableAudioParameterFloat> ("other", "Noise Volume", noiseRange, -6.f,
-                                                                  true,// isAutomatable
-                                                                  "Noise Volume ",
-                                                                  AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String
-                                                                  {
-                                                                      if (approximatelyEqual (value, 0.0f))
-                                                                          return "0 dB";
-
-                                                                      if (approximatelyEqual (value, -96.0f))
-                                                                          return "-Inf dB";
-
-                                                                      return Decibels::toString (value);
-                                                                  });
 
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
@@ -66,18 +49,22 @@ NoiseProcessor::NoiseProcessor (int idNum)
     colourParam = colour.get();
     colourParam->addListener (this);
 
-    volumeParam = noise.get();
-    volumeParam->addListener (this);
 
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (colour));
-    layout.add (std::move (noise));
 
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+    
+    hpf.setFilterType (DigitalFilter::FilterType::HPF);
+    hpf.setFreq (INITHPF);
+    hpf.setQ (DEFAULTQ);
+    lpf.setFilterType (DigitalFilter::FilterType::LPF);
+    lpf.setFreq (INITLPF);
+    lpf.setQ (DEFAULTQ);
 }
 
 NoiseProcessor::~NoiseProcessor()
@@ -85,15 +72,52 @@ NoiseProcessor::~NoiseProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     colourParam->removeListener (this);
-    volumeParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
-void NoiseProcessor::prepareToPlay (double, int)
+void NoiseProcessor::prepareToPlay (double Fs, int)
 {
+    sampleRate = Fs;
+    hpf.setFs (sampleRate);
+    lpf.setFs (sampleRate);
+    generator.setSeedRandomly();
+    
 }
-void NoiseProcessor::processBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void NoiseProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+    
+    float wet;
+    bool bypass;
+    {
+        const ScopedLock sl (getCallbackLock());
+        wet = wetDryParam->get();
+        bypass = !fxOnParam->get();
+    }
+    
+    if (bypass)
+        return;
+    
+    for (int c = 0; c < numChannels ; ++c)
+    {
+        for (int n = 0; n < numSamples ; ++n)
+        {
+            float x = buffer.getWritePointer(c) [n];
+            
+            
+            float noise = generator.nextFloat () - 0.5f; // range = -.5 to +.5
+        
+            auto filterNoise = hpf.processSample(noise,c);
+            filterNoise = lpf.processSample(filterNoise,c);
+            
+            float y = x + wetSmooth[c] * filterNoise;
+            
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            buffer.getWritePointer(c) [n] = y;
+        }
+    }
+    
 }
 
 const String NoiseProcessor::getName() const { return TRANS ("Noise"); }
@@ -102,8 +126,43 @@ Identifier NoiseProcessor::getIdentifier() const { return "Noise" + String (idNu
 /** @internal */
 bool NoiseProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void NoiseProcessor::parameterValueChanged (int, float)
+void NoiseProcessor::parameterValueChanged (int paramIndex, float value)
 {
+    const ScopedLock sl (getCallbackLock());
+    switch (paramIndex)
+    {
+        case (1):
+        {
+            // fx on/off (handled in processBlock)
+            break;
+        }
+        case (2):
+        {    // Wet/dry (handled in processBlock)
+            break;
+        }
+        case (3):
+        {    //Colour
+            if (value > 0.f)
+            {
+                float freqHz = std::powf(10.f, value * 3.2f + 1.f); // 10 - 16000
+                hpf.setFreq (freqHz);
+                lpf.setFreq (INITLPF);
+                lpf.setQ (DEFAULTQ);
+                hpf.setQ (RESQ);
+            }
+            else
+            {
+                float normValue = 1.f + value;
+                float freqHz = 2.f * std::powf(10.f, normValue * 2.f + 2.f); // 20000 -> 200
+                lpf.setFreq (freqHz);
+                hpf.setFreq (INITHPF);
+                hpf.setQ (DEFAULTQ);
+                lpf.setQ (RESQ);
+            }
+            break;
+        }
+    }
+    
 }
 
 }

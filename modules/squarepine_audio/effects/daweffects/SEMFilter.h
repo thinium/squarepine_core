@@ -272,21 +272,16 @@ public:
 
     void setFreq (double newFreq)
     {
-        freqTarget = jlimit (20.0, 20000.0, newFreq);
-        updateCoefficients();
-    }
+        freqTarget = jlimit(20.0, 20000.0, newFreq);    }
 
     void setQ (double newQ)
     {
-        qTarget = jlimit (0.1, 10.0, newQ);
-        updateCoefficients();
+        qTarget = jlimit(0.1, 10.0, newQ);
     }
 
     void setAmpdB (double newAmpdB)
     {
         ampdB = newAmpdB;
-
-        updateCoefficients();
     }
 private:
     FilterType filterType = LPF;
@@ -314,12 +309,23 @@ private:
     double a0 = 1.0;
     double a1 = 0.0;
     double a2 = 0.0;
-
+    
+    int smoothingCount = 0;
+    const int SAMPLESFORSMOOTHING = 256;
+    
     void performSmoothing()
     {
         float alpha = 0.9999f;
         freqSmooth = alpha * freqSmooth + (1.f - alpha) * freqTarget;
-        qSmooth = alpha * qSmooth + (1.f - alpha) * qTarget;
+        qSmooth    = alpha * qSmooth    + (1.f - alpha) * qTarget;
+        
+        smoothingCount++;
+        if (smoothingCount >= SAMPLESFORSMOOTHING)
+        {
+            updateCoefficients();
+            smoothingCount = 0;
+        }
+        
     }
     void updateCoefficients()
     {

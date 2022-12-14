@@ -35,8 +35,20 @@ private:
     
     
     int idNumber = 1;
+
+    double sampleRate = 48000.0;
     
+    DigitalFilter hpf;
+    DigitalFilter lpf;
     
+    const int DEFAULTQ = 0.7071f;
+    const int RESQ = 4.f;
+    const int INITLPF = 20000.f;
+    const int INITHPF = 10.f;
+    
+    float wetSmooth[2] = {0.f};
+  
+    Random generator; // Based on "dither" class
 };
 
 
