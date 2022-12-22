@@ -82,7 +82,6 @@ ShimmerProcessor::ShimmerProcessor (int idNum)
     layout.add (std::move (reverbAmount));
     layout.add (std::move (time));
     layout.add (std::move (other));
-    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);

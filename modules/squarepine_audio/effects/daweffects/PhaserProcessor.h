@@ -35,7 +35,7 @@ namespace djdawprocessor
 namespace djdawprocessor
 {
 
-class PhaserProcessor final : public BandProcessor
+class PhaserProcessor final : public InsertProcessor
 {
 public:
     //Constructor with ID

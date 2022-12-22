@@ -2,8 +2,8 @@
 namespace djdawprocessor
 {
 
-EchoProcessor::EchoProcessor (int idNum)
-    : idNumber (idNum)
+EchoProcessor::EchoProcessor (int idNum): InsertProcessor (true),
+idNumber (idNum)
 {
     reset();
 
@@ -52,10 +52,6 @@ EchoProcessor::EchoProcessor (int idNum)
 
     timeParam = time.get();
     timeParam->addListener (this);
-
-//    feedbackParam = feedback.get();
-//    feedbackParam->addListener (this);
-    
     
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
@@ -69,7 +65,6 @@ EchoProcessor::EchoProcessor (int idNum)
 
     setPrimaryParameter (wetDryParam);
     
-    
 }
 
 EchoProcessor::~EchoProcessor()
@@ -77,7 +72,6 @@ EchoProcessor::~EchoProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     timeParam->removeListener (this);
-   // feedbackParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
@@ -132,6 +126,7 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+
 }
 
 const String EchoProcessor::getName() const { return TRANS ("Echo"); }

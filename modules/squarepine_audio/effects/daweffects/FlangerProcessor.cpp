@@ -30,12 +30,11 @@ FlangerProcessor::FlangerProcessor (int idNum)
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
-                                                                 "Time ",
+                                                                 "Freq ",
                                                                  AudioProcessorParameter::genericParameter,
-                                                                 [] (float value, int) -> String
-                                                                 {
-                                                                     String txt (roundToInt (value));
-                                                                     return txt << "ms";
+                                                                 [] (float value, int) -> String {
+                                                                     String txt (roundToInt (value*100.f)/100.f);
+                                                                     return txt << "Hz";
                                                                      ;
                                                                  });
 
@@ -68,7 +67,7 @@ FlangerProcessor::FlangerProcessor (int idNum)
     layout.add (std::move (wetdry));
     layout.add (std::move (time));
     layout.add (std::move (other));
-    setupBandParameters (layout);
+    
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
@@ -145,6 +144,7 @@ void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
     }
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+
 }
 
 const String FlangerProcessor::getName() const { return TRANS ("Flanger"); }
@@ -186,5 +186,6 @@ void FlangerProcessor::parameterValueChanged (int paramIndex, float value)
         }
     }
 }
+
 
 }

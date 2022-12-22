@@ -30,7 +30,7 @@ TransEffectProcessor::TransEffectProcessor (int idNum): idNumber (idNum)
     NormalisableRange<float> timeRange = { 10.f, 4000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
-                                                                 "Time ",
+                                                                 "Freq ",
                                                                  AudioProcessorParameter::genericParameter,
                                                                  [] (float value, int) -> String {
                                                                      String txt (roundToInt (value));
@@ -118,7 +118,6 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
         }
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
     }
-        
 }
 
 const String TransEffectProcessor::getName() const { return TRANS ("Trans"); }
@@ -133,7 +132,7 @@ void TransEffectProcessor::parameterValueChanged (int id, float value)
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
     
     //Subtract the number of new parameters in this processor
-    BandProcessor::parameterValueChanged (id, value);
+    //BandProcessor::parameterValueChanged (id, value);
 }
 
 }
