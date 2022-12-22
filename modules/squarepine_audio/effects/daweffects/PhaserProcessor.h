@@ -23,7 +23,7 @@ public:
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     AudioParameterChoice* beatParam = nullptr;
-    NotifiableAudioParameterFloat* freqParam = nullptr;
+    NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;

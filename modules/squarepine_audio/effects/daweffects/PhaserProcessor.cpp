@@ -30,14 +30,14 @@ PhaserProcessor::PhaserProcessor (int idNum)
     auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
 
     
-    NormalisableRange<float> freqRange = { 0.1f, 8.f };
-    auto freq = std::make_unique<NotifiableAudioParameterFloat> ("freq", "Frequency", freqRange, 1.f,
+    NormalisableRange<float> timeRange = { 10.f, 32000.f };
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
                                                                  true,// isAutomatable
-                                                                 "Freq ",
+                                                                 "Time ",
                                                                  AudioProcessorParameter::genericParameter,
                                                                  [] (float value, int) -> String {
-                                                                     String txt (roundToInt (value*100.f)/100.f);
-                                                                     return txt << "Hz";
+                                                                     String txt (roundToInt (value));
+                                                                     return txt << "ms";
                                                                      ;
                                                                  });
 
@@ -62,8 +62,8 @@ PhaserProcessor::PhaserProcessor (int idNum)
     beatParam = beat.get();
     beatParam->addListener (this);
 
-    freqParam = freq.get();
-    freqParam->addListener (this);
+    timeParam = time.get();
+    timeParam->addListener (this);
 
     xPadParam = other.get();
     xPadParam->addListener (this);
@@ -72,14 +72,14 @@ PhaserProcessor::PhaserProcessor (int idNum)
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (beat));
-    layout.add (std::move (freq));
+    layout.add (std::move (time));
     layout.add (std::move (other));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
     
-    phase.setFrequency (freqParam->get());
+    phase.setFrequency (1.f/(timeParam->get()/1000.f));
     
     apf.setFilterType (DigitalFilter::FilterType::APF);
     apf.setQ (1.f);
@@ -90,7 +90,7 @@ PhaserProcessor::~PhaserProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     beatParam->removeListener (this);
-    freqParam->removeListener (this);
+    timeParam->removeListener (this);
     xPadParam->removeListener (this);
 }
 
@@ -110,12 +110,10 @@ void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     float wet;
     bool bypass;
     float depth;
-    float frequency;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        frequency = freqParam->get();
-        phase.setFrequency (frequency);
+        phase.setFrequency (1.f/(timeParam->get()/1000.f));
         bypass = !fxOnParam->get();
         depth = xPadParam->get();
     }
@@ -183,9 +181,8 @@ void PhaserProcessor::parameterValueChanged (int paramIndex, float /*value*/)
         }
         case (4):
         {
-            //frequency = value;
-            //lfo.setFrequency (frequency);
-            break; // freq
+
+            break; // time
         }
         case (5):
         {
