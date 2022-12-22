@@ -30,11 +30,11 @@ FlangerProcessor::FlangerProcessor (int idNum)
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
-                                                                 "Freq ",
+                                                                 "Time ",
                                                                  AudioProcessorParameter::genericParameter,
                                                                  [] (float value, int) -> String {
-                                                                     String txt (roundToInt (value*100.f)/100.f);
-                                                                     return txt << "Hz";
+                                                                     String txt (roundToInt (value));
+                                                                     return txt << "ms";
                                                                      ;
                                                                  });
 

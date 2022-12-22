@@ -31,11 +31,11 @@ PhaserProcessor::PhaserProcessor (int idNum)
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
-                                                                 "Freq ",
+                                                                 "Time ",
                                                                  AudioProcessorParameter::genericParameter,
                                                                  [] (float value, int) -> String {
-                                                                     String txt (roundToInt (value*100.f)/100.f);
-                                                                     return txt << "Hz";
+                                                                     String txt (roundToInt (value));
+                                                                     return txt << "ms";
                                                                      ;
                                                                  });
 
@@ -57,8 +57,8 @@ PhaserProcessor::PhaserProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener(this);
 
-    freqParam = freq.get();
-    freqParam->addListener (this);
+    timeParam = time.get();
+    timeParam->addListener (this);
 
     xPadParam = other.get();
     xPadParam->addListener (this);

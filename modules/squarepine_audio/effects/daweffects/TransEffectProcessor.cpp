@@ -30,7 +30,7 @@ TransEffectProcessor::TransEffectProcessor (int idNum): idNumber (idNum)
     NormalisableRange<float> timeRange = { 10.f, 4000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
-                                                                 "Freq ",
+                                                                 "Time ",
                                                                  AudioProcessorParameter::genericParameter,
                                                                  [] (float value, int) -> String {
                                                                      String txt (roundToInt (value));
