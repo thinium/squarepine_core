@@ -1,4 +1,3 @@
-/// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
 namespace djdawprocessor
 {
 class FlangerProcessor final : public BandProcessor
@@ -11,6 +10,7 @@ public:
     //============================================================================== Audio processing
     void prepareToPlay (double Fs, int bufferSize) override;
     void processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override;
+    
     //============================================================================== House keeping
     const String getName() const override;
     /** @internal */
@@ -23,12 +23,18 @@ public:
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     AudioParameterChoice* beatParam = nullptr;
-    NotifiableAudioParameterFloat* timeParam = nullptr;
+    NotifiableAudioParameterFloat* freqParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+    PhaseIncrementer phase;
+    FractionalDelay delayBlock;
+    
+    float wetSmooth[2] = {0.0};
+    float depthSmooth[2] = {5.0};
+    
 };
 
 }

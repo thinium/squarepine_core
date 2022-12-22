@@ -74,10 +74,14 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     layout.add (std::move (beat));
     layout.add (std::move (time));
     layout.add (std::move (other));
-    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+    
+    phase.setFrequency (1.f/(timeParam->get()/1000.f));
+    
+    bpf.setFilterType (DigitalFilter::FilterType::BPF2);
+    bpf.setQ (0.7071f);
 }
 
 LFOFilterProcessor::~LFOFilterProcessor()
@@ -92,10 +96,51 @@ LFOFilterProcessor::~LFOFilterProcessor()
 //============================================================================== Audio processing
 void LFOFilterProcessor::prepareToPlay (double Fs, int bufferSize)
 {
-    BandProcessor::prepareToPlay (Fs, bufferSize);
+    const ScopedLock sl (getCallbackLock());
+    bpf.setFs (Fs);
+    phase.prepare (Fs,bufferSize);
 }
-void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+    
+    float wet;
+    bool bypass;
+    float depth;
+    {
+        const ScopedLock sl (getCallbackLock());
+        wet = wetDryParam->get();
+        bypass = !fxOnParam->get();
+        depth = xPadParam->get();
+    }
+    
+    if (bypass)
+        return;
+    
+    double lfoSample;
+    //
+    for (int c = 0; c < numChannels ; ++c)
+    {
+        for (int n = 0; n < numSamples ; ++n)
+        {
+            lfoSample = phase.getNextSample(c);
+            float x = buffer.getWritePointer(c) [n];
+            
+            float normLFO = 0.5f * sin(lfoSample) + 0.5f;
+            float value = static_cast<float> (depthSmooth[c] * normLFO * 0.5 + 0.5);
+            float freqHz = 2.f * std::powf(10.f, (1.7f * value) + 2.f); // 200 - 10000
+            bpf.setFreq (freqHz);
+            
+            float wetSample = bpf.processSample (x, c);
+            
+            float y = (1.f - wetSmooth[c]) * x + wetSmooth[c] * wetSample;
+            
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            depthSmooth[c] = 0.999f * depthSmooth[c] + 0.001f * depth;
+            buffer.getWritePointer(c) [n] = y;
+        }
+    }
 }
 
 const String LFOFilterProcessor::getName() const { return TRANS ("LFO Filter"); }
@@ -104,13 +149,41 @@ Identifier LFOFilterProcessor::getIdentifier() const { return "LFO Filter" + Str
 /** @internal */
 bool LFOFilterProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void LFOFilterProcessor::parameterValueChanged (int id, float value)
+void LFOFilterProcessor::parameterValueChanged (int paramIndex, float value)
 {
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
 
-    //Subtract the number of new parameters in this processor
-    BandProcessor::parameterValueChanged (id, value);
+    const ScopedLock sl (getCallbackLock());
+    switch (paramIndex)
+    {
+        case (1):
+        {
+            // fx on/off (handled in processBlock)
+            break;
+        }
+        case (2):
+        {
+            //wetDry.setTargetValue (value);
+            //
+            break;
+        }
+        case (3):
+        {
+        
+            break;
+        }
+        case (4):
+        {
+            phase.setFrequency (1.f/(value/1000.f));
+            break; // time
+        }
+        case (5):
+        {
+            //depth = 20.0 * value;
+            break; // Modulation
+        }
+    }
 }
 
 }

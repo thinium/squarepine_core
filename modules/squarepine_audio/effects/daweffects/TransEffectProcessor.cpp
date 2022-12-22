@@ -27,22 +27,21 @@ TransEffectProcessor::TransEffectProcessor (int idNum): idNumber (idNum)
     
     StringArray options{"1/16","1/8","1/4","1/2","1","2","4","8","16"};
     auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
-    
-    
-    NormalisableRange<float> timeRange = { 10.0f, 16000.f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+
+    NormalisableRange<float> freqRange = { 1.f, 10.f };
+    auto freq = std::make_unique<NotifiableAudioParameterFloat> ("freq", "Frequency", freqRange, 3.f,
                                                                  true,// isAutomatable
-                                                                 "Time ",
+                                                                 "Freq ",
                                                                  AudioProcessorParameter::genericParameter,
                                                                  [] (float value, int) -> String {
-        String txt (roundToInt (value));
-        return txt << "ms";
-        ;
-    });
-    
+                                                                     String txt (roundToInt (value*100.f)/100.f);
+                                                                     return txt << "Hz";
+                                                                     ;
+                                                                 });
+
     NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "X Pad Division", otherRange, 3,
-                                                                  false,// isAutomatable
+    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "X Pad Division", otherRange,1.f,
+                                                                  true,// isAutomatable
                                                                   "X Pad Division ",
                                                                   AudioProcessorParameter::genericParameter,
                                                                   [] (float value, int) -> String {
@@ -59,10 +58,10 @@ TransEffectProcessor::TransEffectProcessor (int idNum): idNumber (idNum)
     
     beatParam = beat.get();
     beatParam->addListener (this);
-    
-    timeParam = time.get();
-    timeParam->addListener (this);
-    
+
+    freqParam = freq.get();
+    freqParam->addListener (this);
+
     xPadParam = other.get();
     xPadParam->addListener (this);
     
@@ -70,12 +69,13 @@ TransEffectProcessor::TransEffectProcessor (int idNum): idNumber (idNum)
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (beat));
-    layout.add (std::move (time));
+    layout.add (std::move (freq));
     layout.add (std::move (other));
-    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
     
     setPrimaryParameter (wetDryParam);
+    
+    phase.setFrequency (freqParam->get());
 }
 
 TransEffectProcessor::~TransEffectProcessor()
@@ -83,17 +83,64 @@ TransEffectProcessor::~TransEffectProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     beatParam->removeListener (this);
-    timeParam->removeListener (this);
+    freqParam->removeListener (this);
     xPadParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
 void TransEffectProcessor::prepareToPlay (double Fs, int bufferSize)
 {
-    BandProcessor::prepareToPlay (Fs, bufferSize);
+    const ScopedLock sl (getCallbackLock());
+    phase.prepare (Fs,bufferSize);
 }
-void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+    
+    float wet;
+    bool bypass;
+    float depth;
+    float frequency;
+    {
+        const ScopedLock sl (getCallbackLock());
+        wet = wetDryParam->get();
+        frequency = freqParam->get();
+        phase.setFrequency (frequency);
+        bypass = !fxOnParam->get();
+        depth = xPadParam->get();
+    }
+    
+    if (bypass)
+        return;
+    
+    double lfoSample;
+    //
+    for (int c = 0; c < numChannels ; ++c)
+    {
+        for (int n = 0; n < numSamples ; ++n)
+        {
+            lfoSample = phase.getNextSample(c);
+            float x = buffer.getWritePointer(c) [n];
+            
+            float amp = 1.f;
+            if (lfoSample > M_PI)
+                amp = 0.f;
+            
+            ampSmooth[c] = 0.95f * ampSmooth[c] + 0.05f * amp;
+            
+            float offset = 1.f - depthSmooth[c];
+            float combinedAmp = static_cast<float> (depthSmooth[c] * ampSmooth[c] + offset);
+            
+            float wetSample = x * combinedAmp;
+            
+            float y = (1.f - wetSmooth[c]) * x + wetSmooth[c] * wetSample;
+            
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            depthSmooth[c] = 0.999f * depthSmooth[c] + 0.001f * depth;
+            buffer.getWritePointer(c) [n] = y;
+        }
+    }
 }
 
 const String TransEffectProcessor::getName() const { return TRANS ("Trans"); }
@@ -108,7 +155,7 @@ void TransEffectProcessor::parameterValueChanged (int id, float value)
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
     
     //Subtract the number of new parameters in this processor
-    BandProcessor::parameterValueChanged (id, value);
+    //BandProcessor::parameterValueChanged (id, value);
 }
 
 }

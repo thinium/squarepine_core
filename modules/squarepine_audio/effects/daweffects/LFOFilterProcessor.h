@@ -2,7 +2,7 @@ namespace djdawprocessor
 {
 /// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
 
-class LFOFilterProcessor final : public BandProcessor
+class LFOFilterProcessor final : public InsertProcessor
 {
 public:
     //Constructor with ID
@@ -30,6 +30,12 @@ private:
     AudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+    
+    PhaseIncrementer phase;
+    DigitalFilter bpf;
+    
+    float wetSmooth[2] = {0.0};
+    float depthSmooth[2] = {5.0};
 };
 
 }

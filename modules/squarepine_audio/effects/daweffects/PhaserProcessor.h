@@ -1,7 +1,7 @@
 namespace djdawprocessor
 {
 
-class PhaserProcessor final : public BandProcessor
+class PhaserProcessor final : public InsertProcessor
 {
 public:
     //Constructor with ID
@@ -23,12 +23,18 @@ public:
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     AudioParameterChoice* beatParam = nullptr;
-    NotifiableAudioParameterFloat* timeParam = nullptr;
+    NotifiableAudioParameterFloat* freqParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+
+    PhaseIncrementer phase;
+    DigitalFilter apf;
+    
+    float wetSmooth[2] = {0.0};
+    float depthSmooth[2] = {5.0};
 };
 
 }

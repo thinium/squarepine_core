@@ -41,10 +41,10 @@ private:
     DigitalFilter hpf;
     DigitalFilter lpf;
     
-    const int DEFAULTQ = 0.7071f;
-    const int RESQ = 4.f;
-    const int INITLPF = 20000.f;
-    const int INITHPF = 10.f;
+    const float DEFAULTQ = 0.7071f;
+    const float RESQ = 4.f;
+    const float INITLPF = 20000.f;
+    const float INITHPF = 10.f;
     
     float wetSmooth[2] = {0.f};
   

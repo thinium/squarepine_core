@@ -31,15 +31,14 @@ FlangerProcessor::FlangerProcessor (int idNum)
     StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
     auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
 
-    NormalisableRange<float> timeRange = { 10.f, 32000 };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+    NormalisableRange<float> freqRange = { 0.1f, 8.f };
+    auto freq = std::make_unique<NotifiableAudioParameterFloat> ("freq", "Frequency", freqRange, 1.f,
                                                                  true,// isAutomatable
-                                                                 "Time ",
+                                                                 "Freq ",
                                                                  AudioProcessorParameter::genericParameter,
-                                                                 [] (float value, int) -> String
-                                                                 {
-                                                                     String txt (roundToInt (value));
-                                                                     return txt << "ms";
+                                                                 [] (float value, int) -> String {
+                                                                     String txt (roundToInt (value*100.f)/100.f);
+                                                                     return txt << "Hz";
                                                                      ;
                                                                  });
 
@@ -64,8 +63,8 @@ FlangerProcessor::FlangerProcessor (int idNum)
     beatParam = beat.get();
     beatParam->addListener (this);
 
-    timeParam = time.get();
-    timeParam->addListener (this);
+    freqParam = freq.get();
+    freqParam->addListener (this);
 
     xPadParam = other.get();
     xPadParam->addListener (this);
@@ -74,12 +73,14 @@ FlangerProcessor::FlangerProcessor (int idNum)
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (beat));
-    layout.add (std::move (time));
+    layout.add (std::move (freq));
     layout.add (std::move (other));
-    setupBandParameters (layout);
+    
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+    
+    phase.setFrequency (freqParam->get());
 }
 
 FlangerProcessor::~FlangerProcessor()
@@ -87,17 +88,61 @@ FlangerProcessor::~FlangerProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     beatParam->removeListener (this);
-    timeParam->removeListener (this);
+    freqParam->removeListener (this);
     xPadParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
 void FlangerProcessor::prepareToPlay (double Fs, int bufferSize)
 {
-    BandProcessor::prepareToPlay (Fs, bufferSize);
+    
+    const ScopedLock sl (getCallbackLock());
+    phase.prepare (Fs, bufferSize);
+    delayBlock.setFs (static_cast<float> (Fs));
 }
-void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+    
+    float wet;
+    bool bypass;
+    float depth;
+    float frequency;
+    {
+        const ScopedLock sl (getCallbackLock());
+        wet = wetDryParam->get();
+        frequency = freqParam->get();
+        phase.setFrequency (frequency);
+        bypass = !fxOnParam->get();
+        depth = 20.f * xPadParam->get();
+    }
+    
+    if (bypass)
+        return;
+    
+    double lfoSample;
+
+    for (int c = 0; c < numChannels ; ++c)
+    {
+        for (int n = 0; n < numSamples ; ++n)
+        {
+            lfoSample = phase.getNextSample(c);
+            float x = buffer.getWritePointer(c) [n];
+            
+            float offset = depthSmooth[c] + 2.f;
+            float delayTime = static_cast<float> (depthSmooth[c] * sin(lfoSample) + offset);
+            delayBlock.setDelaySamples (delayTime);
+            
+            float wetSample = delayBlock.processSample (x, c);
+            
+            float y = x + wetSmooth[c] * wetSample;
+            
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            depthSmooth[c] = 0.999f * depthSmooth[c] + 0.001f * depth;
+            buffer.getWritePointer(c) [n] = y;
+        }
+    }
 }
 
 const String FlangerProcessor::getName() const { return TRANS ("Flanger"); }
@@ -106,13 +151,43 @@ Identifier FlangerProcessor::getIdentifier() const { return "Flanger" + String (
 /** @internal */
 bool FlangerProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void FlangerProcessor::parameterValueChanged (int id, float value)
+void FlangerProcessor::parameterValueChanged (int paramIndex, float /*value*/)
 {
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
 
     //Subtract the number of new parameters in this processor
-    BandProcessor::parameterValueChanged (id, value);
+    const ScopedLock sl (getCallbackLock());
+    switch (paramIndex)
+    {
+        case (1):
+        {
+            // fx on/off (handled in processBlock)
+            break;
+        }
+        case (2):
+        {
+            //wetDry.setTargetValue (value);
+            //
+            break;
+        }
+        case (3):
+        {
+        
+            break;
+        }
+        case (4):
+        {
+            //frequency = value;
+            //lfo.setFrequency (frequency);
+            break; // freq
+        }
+        case (5):
+        {
+            //depth = 20.0 * value;
+            break; // Modulation
+        }
+    }
 }
 
 }

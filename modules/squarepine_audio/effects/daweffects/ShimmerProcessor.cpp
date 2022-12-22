@@ -38,14 +38,13 @@ ShimmerProcessor::ShimmerProcessor (int idNum)
                                                                              return txt << "%";
                                                                          });
 
-    NormalisableRange<float> timeRange = { 1.f, 4000.f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+    NormalisableRange<float> timeRange = { 0.f, 1.f };
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 0.9f,
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
-                                                                 [] (float value, int) -> String
-                                                                 {
-                                                                     String txt (roundToInt (value));
+                                                                 [] (float value, int) -> String {
+                                                                     String txt (roundToInt (value * 100.f)/100.f);
                                                                      return txt;
                                                                      ;
                                                                  });
@@ -82,7 +81,6 @@ ShimmerProcessor::ShimmerProcessor (int idNum)
     layout.add (std::move (reverbAmount));
     layout.add (std::move (time));
     layout.add (std::move (other));
-    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
@@ -100,10 +98,71 @@ ShimmerProcessor::~ShimmerProcessor()
 //============================================================================== Audio processing
 void ShimmerProcessor::prepareToPlay (double Fs, int bufferSize)
 {
-    BandProcessor::prepareToPlay (Fs, bufferSize);
+    pitchShifter.setFs (Fs);
+    pitchShifter.setPitch (12.f);
+    
+    effectBuffer = AudioBuffer<float> (2 , bufferSize);
 }
-void ShimmerProcessor::processAudioBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void ShimmerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+    
+    float wet;
+    bool bypass;
+    float depth;
+    float time;
+    {
+        const ScopedLock sl (getCallbackLock());
+        wet = wetDryParam->get();
+        time = timeParam->get();
+        bypass = !fxOnParam->get();
+        depth = xPadParam->get();
+    }
+    
+    if (bypass)
+        return;
+
+    //
+    for (int c = 0; c < numChannels ; ++c)
+    {
+        for (int n = 0; n < numSamples ; ++n)
+        {
+            float x = buffer.getWritePointer(c) [n];
+            
+            //ampSmooth[c] = 0.95f * ampSmooth[c] + 0.05f * amp;
+            
+            float wetSample = pitchShifter.processSample (x,c);
+            
+            float y = wetSmooth[c] * wetSample;
+            
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            //depthSmooth[c] = 0.999f * depthSmooth[c] + 0.001f * depth;
+            effectBuffer.getWritePointer(c) [n] = y;
+        }
+    }
+    
+    auto** chans = effectBuffer.getArrayOfWritePointers();
+
+    const ScopedLock sl (getCallbackLock());
+
+    switch (numChannels)
+    {
+        case 1:
+            reverb.processMono (chans[0], numSamples);
+            break;
+
+        case 2:
+            reverb.processStereo (chans[0], chans[1], numSamples);
+            break;
+
+        default:
+            break;
+    }
+    
+    for (int c = 0; c < numChannels ; ++c)
+        buffer.addFrom (c,0,effectBuffer.getWritePointer(c),numSamples);
 }
 
 const String ShimmerProcessor::getName() const { return TRANS ("Shimmer"); }
@@ -117,8 +176,19 @@ void ShimmerProcessor::parameterValueChanged (int id, float value)
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
 
-    //Subtract the number of new parameters in this processor
-    BandProcessor::parameterValueChanged (id, value);
+    Reverb::Parameters localParams;
+
+    localParams.roomSize = timeParam->get();
+    localParams.damping = 1 - reverbAmountParam->get();
+    localParams.wetLevel = 1.f;
+    localParams.dryLevel = 0.f;
+    localParams.width = 1;
+    localParams.freezeMode = 0;
+
+    {
+        const ScopedLock sl (getCallbackLock());
+        reverb.setParameters (localParams);
+    }
 }
 
 }

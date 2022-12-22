@@ -31,6 +31,13 @@ private:
     AudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+
+    //Using the Juce reverb
+    Reverb reverb;
+    PitchShifter pitchShifter;
+    AudioBuffer<float> effectBuffer;
+    
+    float wetSmooth[2] = {0.f};
 };
 
 }
