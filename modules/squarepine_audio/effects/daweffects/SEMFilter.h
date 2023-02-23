@@ -325,7 +325,7 @@ private:
     
     int smoothingCount = 0;
     const int SAMPLESFORSMOOTHING = 256;
-    
+
     void performSmoothing()
     {
         float alpha = 0.9999f;
@@ -338,8 +338,8 @@ private:
             updateCoefficients();
             smoothingCount = 0;
         }
-        
     }
+    
     void updateCoefficients()
     {
         double A = std::pow (10.0, ampdB / 40.0);// Linear amplitude
