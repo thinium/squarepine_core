@@ -184,6 +184,8 @@ void PhaserProcessor::parameterValueChanged (int paramIndex, float value)
     
     BandProcessor::parameterValueChanged (paramIndex, value);
     
+    BandProcessor::parameterValueChanged (paramIndex, value);
+    
     const ScopedLock sl (getCallbackLock());
     switch (paramIndex)
     {

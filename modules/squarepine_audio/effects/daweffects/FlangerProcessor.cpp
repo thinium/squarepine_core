@@ -67,7 +67,7 @@ FlangerProcessor::FlangerProcessor (int idNum)
     layout.add (std::move (wetdry));
     layout.add (std::move (time));
     layout.add (std::move (other));
-    
+    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
@@ -144,7 +144,6 @@ void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
     }
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
-
 }
 
 const String FlangerProcessor::getName() const { return TRANS ("Flanger"); }

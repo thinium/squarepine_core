@@ -2,7 +2,7 @@
 namespace djdawprocessor
 {
 
-EchoProcessor::EchoProcessor (int idNum): InsertProcessor (true),
+EchoProcessor::EchoProcessor (int idNum):
 idNumber (idNum)
 {
     reset();

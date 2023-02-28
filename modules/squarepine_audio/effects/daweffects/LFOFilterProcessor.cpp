@@ -67,6 +67,7 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     layout.add (std::move (wetdry));
     layout.add (std::move (time));
     layout.add (std::move (other));
+    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
@@ -89,7 +90,6 @@ LFOFilterProcessor::~LFOFilterProcessor()
 //============================================================================== Audio processing
 void LFOFilterProcessor::prepareToPlay (double Fs, int bufferSize)
 {
-    
     BandProcessor::prepareToPlay (Fs, bufferSize);
     
     const ScopedLock sl (getCallbackLock());

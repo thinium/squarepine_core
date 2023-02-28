@@ -11,6 +11,9 @@ namespace djdawprocessor
 /// Extra parameter is Q. Minimum appears to be 0.5 (definitely less than 0.7071) and max is Q=5
 namespace djdawprocessor
 {
+/// NoiseProcessor is a BPF for both directions of the knob. 12 dB/oct roll-off (2nd order), Q = 5
+/// FREQ Range is 20-20k
+/// Extra parameter: controls the amplitude of the additive noise (0 min to 1 max)
 
 class NoiseProcessor final : public InternalProcessor,
 public AudioProcessorParameter::Listener

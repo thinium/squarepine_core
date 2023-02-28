@@ -75,7 +75,7 @@ void ModulatedDelay::clearDelay()
 
 float FractionalDelay::processSample (float x, int channel)
 {
-    smoothDelay[channel] = 0.9995f * smoothDelay[channel] + 0.0005f * delay;
+    smoothDelay[channel] = 0.999f * smoothDelay[channel] + 0.001f * delay;
 
     if (smoothDelay[channel] < 1.f)
     {

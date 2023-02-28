@@ -7,7 +7,7 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
     reset();
 
     NormalisableRange<float> wetDryRange = { 0.f, 1.f };
-    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 0.5f,
+    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 1.f,
                                                                    true,// isAutomatable
                                                                    "Dry/Wet",
                                                                    AudioProcessorParameter::genericParameter,
@@ -122,7 +122,6 @@ void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     float dry, wet, x, y;
     
     
-    
     for (int s = 0; s < numSamples; ++s)
     {
         wet = wetDry.getNextValue();
@@ -171,7 +170,7 @@ void LongDelayProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (4):
         {
-            
+        
             break;
         }
     }

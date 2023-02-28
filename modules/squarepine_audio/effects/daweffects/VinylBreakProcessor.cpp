@@ -56,6 +56,18 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
                                                                       String txt (percentage);
                                                                       return txt << "%";
                                                                   });
+    
+    // Multiplier for speed the vinyl break happens
+    NormalisableRange<float> speedRange = { 0.f, 1.0f };
+    auto speed = std::make_unique<NotifiableAudioParameterFloat> ("speed", "Speed", speedRange, 1.f,
+                                                                  true,// isAutomatable
+                                                                  "Speed ",
+                                                                  AudioProcessorParameter::genericParameter,
+                                                                  [] (float value, int) -> String {
+                                                                      int percentage = roundToInt (value * 100);
+                                                                      String txt (percentage);
+                                                                      return txt << "%";
+                                                                  });
 
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
@@ -225,7 +237,6 @@ void VinylBreakProcessor::parameterValueChanged (int id, float value)
         }
         case (2):
         {
-            //wet/dry
             
             break;
         }
@@ -240,7 +251,6 @@ void VinylBreakProcessor::parameterValueChanged (int id, float value)
 
             break;
         }
-        case (4):
         {
             // Speed
             if (value < 0.001)

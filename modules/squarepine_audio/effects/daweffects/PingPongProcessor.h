@@ -31,7 +31,6 @@ private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
-    //NotifiableAudioParameterFloat* feedbackParam = nullptr;
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;

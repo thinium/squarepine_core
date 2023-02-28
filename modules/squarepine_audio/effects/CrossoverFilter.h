@@ -71,6 +71,7 @@ public:
         lpf.processToOutputBuffer (inBuffer, outBuffer);
         hpf.processToOutputBuffer (inBuffer, outBuffer);
     }
+
 private:
     CrossoverFilter lpf;
     CrossoverFilter hpf;

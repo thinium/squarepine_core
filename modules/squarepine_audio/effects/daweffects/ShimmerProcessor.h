@@ -2,9 +2,6 @@
 namespace djdawprocessor
 {
 
-namespace djdawprocessor
-{
-
 class ShimmerProcessor final : public BandProcessor
 {
 public:
@@ -46,7 +43,7 @@ private:
     
     AudioBuffer<float> inputBuffer;
     AudioBuffer<float> outputBuffer;
-
+    
 };
 
 }

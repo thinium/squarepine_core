@@ -118,6 +118,12 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
         }
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
     }
+    
+    multibandBuffer.applyGain (wet);
+    buffer.applyGain (dry);
+    
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
 }
 
 const String TransEffectProcessor::getName() const { return TRANS ("Trans"); }
@@ -132,7 +138,7 @@ void TransEffectProcessor::parameterValueChanged (int id, float value)
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
     
     //Subtract the number of new parameters in this processor
-    //BandProcessor::parameterValueChanged (id, value);
+    BandProcessor::parameterValueChanged (id, value);
 }
 
 }

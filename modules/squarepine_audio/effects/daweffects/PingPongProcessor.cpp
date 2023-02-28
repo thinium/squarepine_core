@@ -17,7 +17,6 @@ PingPongProcessor::PingPongProcessor (int idNum)
                                                                        String txt (percentage);
                                                                        return txt << "%";
                                                                    });
-
   
     auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String {
         if (value > 0)
@@ -63,7 +62,6 @@ PingPongProcessor::~PingPongProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     timeParam->removeListener (this);
-    //feedbackParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
