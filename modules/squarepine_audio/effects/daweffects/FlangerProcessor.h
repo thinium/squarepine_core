@@ -1,5 +1,9 @@
 namespace djdawprocessor
 {
+/// TODO: default is 2000 ms (freq of LFO?) there appears to be some feedback/resonance (amount?)
+/// TODO: depth of LFO is ~12 samples?, wet/dry is true blend
+/// X-PAD control adds warble to the modulated delay, see the LFOFilter for a detailed description
+
 class FlangerProcessor final : public BandProcessor
 {
 public:
@@ -26,14 +30,15 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
-    AudioParameterBool* fxOnParam = nullptr;
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
     PhaseIncrementer phase;
-    FractionalDelay delayBlock;
+    PhaseIncrementer phaseWarble;
+    ModulatedDelay delayBlock;
     
-    float wetSmooth[2] = {0.0};
-    float depthSmooth[2] = {5.0};
+    float wetSmooth[2] = {0.f};
+    float warbleSmooth[2] = {1.f};
     
 };
 

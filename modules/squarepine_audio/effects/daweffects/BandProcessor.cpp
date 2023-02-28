@@ -74,14 +74,71 @@ void BandProcessor::parameterValueChanged (int paramIndex, float)
 void BandProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     setRateAndBufferSizeDetails (Fs, bufferSize);
+    
+    int numChannels = 2;
+    multibandBuffer.setSize (numChannels, bufferSize);
+    tempBuffer.setSize (numChannels, bufferSize);
 }
 void BandProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
-    //This should split the signal into bands if required
-    //Then the processaudioblock should be called to perform the processing
-
-    //TODO
+    // Called for each individual effect's processing
     processAudioBlock (buffer, midi);
+    
+}
+
+void BandProcessor::fillMultibandBuffer (juce::AudioBuffer<float>& buffer)
+{
+    
+    bool lowOn;
+    bool midOn;
+    bool highOn;
+    {
+        const ScopedLock sl (getCallbackLock());
+        lowOn = lowFrequencyToggleParam->get();
+        midOn = midFrequencyToggleParam->get();
+        highOn = highFrequencyToggleParam->get();
+    }
+    
+    if (!lowOn || !midOn || !highOn)
+    {
+        multibandBuffer.clear();
+        if (lowOn)
+        {
+            tempBuffer.clear();
+            lowbandFilter.processToOutputBuffer (buffer, tempBuffer);
+            int numChannels = buffer.getNumChannels();
+            int numSamples = buffer.getNumSamples();
+            for (int c = 0; c < numChannels; ++c)
+                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer(c), numSamples);
+            
+        }
+        if (midOn)
+        {
+            tempBuffer.clear();
+            midbandFilter.processToOutputBuffer (buffer, tempBuffer);
+            int numChannels = buffer.getNumChannels();
+            int numSamples = buffer.getNumSamples();
+            for (int c = 0; c < numChannels; ++c)
+                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer(c), numSamples);
+        }
+        if (highOn)
+        {
+            tempBuffer.clear();
+            highbandFilter.processToOutputBuffer (buffer, tempBuffer);
+            int numChannels = buffer.getNumChannels();
+            int numSamples = buffer.getNumSamples();
+            for (int c = 0; c < numChannels; ++c)
+                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer(c), numSamples);
+        }
+    }
+    else
+    {
+        int numChannels = buffer.getNumChannels();
+        int numSamples = buffer.getNumSamples();
+        for (int c = 0; c < numChannels; ++c)
+            multibandBuffer.copyFrom (c, 0, buffer.getWritePointer(c), numSamples);
+        
+    }
 }
 
 }

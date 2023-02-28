@@ -7,7 +7,7 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
     reset();
 
     NormalisableRange<float> wetDryRange = { 0.f, 1.f };
-    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 0.5f,
+    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 1.f,
                                                                    true,// isAutomatable
                                                                    "Dry/Wet",
                                                                    AudioProcessorParameter::genericParameter,
@@ -85,7 +85,7 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
     appendExtraParams (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
-    setPrimaryParameter (wetDryParam);
+    setPrimaryParameter (echoColourParam);
     
     hpf.setFilterType (DigitalFilter::FilterType::HPF);
     hpf.setFreq (400.f);

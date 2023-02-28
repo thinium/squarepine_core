@@ -1,7 +1,24 @@
+
 namespace djdawprocessor
 {
 
-/// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
+
+/// TODO: there seems to be subtle modulation of the delay.
+/// Extra parameter does several things. It controls feedback amount.
+/// It seems like when this parameter is less than 50%, it is increasing the
+/// feedback amount from ~one repeat to many. When the parameter is 50% or above,
+/// this parameter seems to be blending in a delay with 100% feedback. Although,
+/// it doesn't sound like new audio is getting fed into the delay. Rather, it sounds
+/// like a loop from when this parameter reached 50% is getting repeated endlessly.
+/// Therefore, I think there are actually 2 different delays blended together. One
+/// for the parameter below 50% and this other 100% feedback thing when knob is above 50%.
+
+/// The color parameter has an effect on several things. There is a low-pass filter on the
+/// repeats when color is turned left and a high-pass filter when color turned right. When
+/// the color parameter is at the center, there is no effect. So, it seems like it is some
+/// sort of a dry/wet control. Also, the length of the delay is controlled by the color knob.
+/// When close to center, the delays are shorter than when the knob is twisted to the max/min
+/// left and right.
 
 class DubEchoProcessor final : public V10SendProcessor
 {

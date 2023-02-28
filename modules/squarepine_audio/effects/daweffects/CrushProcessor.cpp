@@ -43,7 +43,7 @@ CrushProcessor::CrushProcessor (int idNum)
                                                                    });
 
     NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("other", "Noise Volume", otherRange, 0.5f,
+    auto other = std::make_unique<NotifiableAudioParameterFloat> ("other", "Other", otherRange, 0.5f,
                                                                   true,// isAutomatable
                                                                   "Other ",
                                                                   AudioProcessorParameter::genericParameter,
@@ -63,8 +63,8 @@ CrushProcessor::CrushProcessor (int idNum)
     colourParam = colour.get();
     colourParam->addListener (this);
 
-    emphasisParam = other.get();
-    emphasisParam->addListener (this);
+    otherParam = other.get();
+    otherParam->addListener (this);
 
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
@@ -74,7 +74,7 @@ CrushProcessor::CrushProcessor (int idNum)
 
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
-    setPrimaryParameter (wetDryParam);
+    setPrimaryParameter (colourParam);
 }
 
 CrushProcessor::~CrushProcessor()
@@ -82,7 +82,7 @@ CrushProcessor::~CrushProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     colourParam->removeListener (this);
-    emphasisParam->removeListener (this);
+    otherParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
@@ -91,28 +91,32 @@ void CrushProcessor::prepareToPlay (double sampleRate, int bufferSize)
     bitCrusher.prepareToPlay (sampleRate, bufferSize);
     highPassFilter.setFilterType (DigitalFilter::FilterType::HPF);
     highPassFilter.setFs (sampleRate);
+    delayBlock.setFs (static_cast<float> (sampleRate));
+    
     dryBuffer = AudioBuffer<float> (2, bufferSize);
 }
 void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+    
     float wet = 0.5f;
-    bool isOn = false;
+    bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        isOn = fxOnParam->get();
+        bypass = !fxOnParam->get();
     }
-
-    if (! isOn)
+        
+    if (bypass)
         return;
-
-    for (int c = 0; c < buffer.getNumChannels(); ++c)
+    
+    for (int c = 0 ; c < numChannels ; ++c)
     {
         dryBuffer.copyFrom (c, 0, buffer, c, 0, buffer.getNumSamples());
     }
     bitCrusher.processBlock (buffer, midi);
     highPassFilter.processBuffer (buffer, midi);
-
     buffer.applyGain (wet);
     dryBuffer.applyGain (1.f - wet);
 
@@ -135,13 +139,19 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
     if (paramNum == 2) {}// wet/dry
     else if (paramNum == 3) // "color"
     {
+        
+        float other = otherParam->get();
+        float samplesOfDelay = jmin(15.f, 1.f + abs(value) * 10.f + other * 10.f);
+        delayBlock.setDelaySamples (samplesOfDelay);
         if (value <= 0.f)
         {
             highPassFilter.setFreq (20.0);
             float normValue = (value * -1.f);
-            // 3 bits -> normValue = 0
-            // 8 bits -> normValue = 1
-            bitCrusher.setBitDepth (5.f * std::sqrt (1.f - normValue) + 3.f);
+            // 4 bits -> normValue = 0
+            // 9 bits -> normValue = 1
+            float bitDepth = 5.f * std::sqrt(1.f - normValue) + 5.f;
+            bitCrusher.setBitDepth (bitDepth);
+            colorSign = 1.f;
         }
         else
         {
@@ -149,10 +159,18 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
             // freqHz = 20 -> 5000
             float freqHz = 2.f * std::powf (10.f, 3.f * (normValue * 0.8f) + 1.f);
             highPassFilter.setFreq (freqHz);
-            // 8 bits -> value = 0.5, normValue = 0
-            // 3 bits -> value = 1, normValue = 0
-            bitCrusher.setBitDepth (5.f * std::sqrt (1.f - normValue) + 3.f);
+            // 9 bits -> value = 0.5, normValue = 0
+            // 4 bits -> value = 1, normValue = 0
+            float bitDepth = 5.f * std::sqrt(1.f - normValue) + 5.f;
+            bitCrusher.setBitDepth (bitDepth);
+            colorSign = -1.f;
         }
+    }
+    else if (paramNum == 4) // "other"
+    {
+        float color = colourParam->get();
+        float samplesOfDelay = jmin(15.f, 1.f + value * 10.f + abs(color) * 10.f);
+        delayBlock.setDelaySamples (samplesOfDelay);
     }
 }
 

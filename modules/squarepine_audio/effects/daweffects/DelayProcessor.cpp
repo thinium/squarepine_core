@@ -1,17 +1,82 @@
 namespace djdawprocessor
 {
 
-FractionalDelay::FractionalDelay()
+
+float ModulatedDelay::processSample (float x, int channel)
 {
+    if (delay < 1.f)
+    {
+        return x;
+    }
+    else
+    {
+        // Delay Buffer
+        // "delay" can be fraction
+        int d1 = (int) floor (delay);
+        int d2 = d1 + 1;
+        float g2 = delay - (float) d1;
+        float g1 = 1.0f - g2;
+
+        int indexD1 = index[channel] - d1;
+        if (indexD1 < 0)
+        {
+            indexD1 += MAX_BUFFER_SIZE;
+        }
+
+        int indexD2 = index[channel] - d2;
+        if (indexD2 < 0)
+        {
+            indexD2 += MAX_BUFFER_SIZE;
+        }
+
+        float y = g1 * delayBuffer[indexD1][channel] + g2 * delayBuffer[indexD2][channel];
+
+        delayBuffer[index[channel]][channel] = x;
+
+        if (index[channel] < MAX_BUFFER_SIZE - 1)
+        {
+            index[channel]++;
+        }
+        else
+        {
+            index[channel] = 0;
+        }
+
+        return y;
+    }
 }
-// Destructor
-FractionalDelay::~FractionalDelay()
+
+void ModulatedDelay::setFs (float _Fs)
 {
+    this->Fs = _Fs;
+}
+
+void ModulatedDelay::setDelaySamples (float _delay)
+{
+    if (delay >= 1.f)
+    {
+        delay = _delay;
+    }
+    else
+    {
+        delay = 0.f;
+    }
+}
+
+void ModulatedDelay::clearDelay()
+{
+    for (int i = 0; i < MAX_BUFFER_SIZE; ++i)
+    {
+        for (int c = 0; c < 2; ++c)
+        {
+            delayBuffer[i][c] = 0;
+        }
+    }
 }
 
 float FractionalDelay::processSample (float x, int channel)
 {
-    smoothDelay[channel] = 0.9995f * smoothDelay[channel] + 0.0005f * delay;
+    smoothDelay[channel] = 0.999f * smoothDelay[channel] + 0.001f * delay;
 
     if (smoothDelay[channel] < 1.f)
     {
@@ -289,7 +354,14 @@ void DelayProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    const ScopedLock lock (getCallbackLock());
+//    const ScopedLock sl (getCallbackLock());
+//    bool bypass;
+//    {
+//        bypass = !fxOnParam->get();
+//    }
+//    
+//    if (bypass)
+//        return;
 
     float dry, wet, x, y, z;
     for (int s = 0; s < numSamples; ++s)

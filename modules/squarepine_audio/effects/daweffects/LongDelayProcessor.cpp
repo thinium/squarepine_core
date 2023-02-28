@@ -7,7 +7,7 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
     reset();
 
     NormalisableRange<float> wetDryRange = { 0.f, 1.f };
-    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 0.5f,
+    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 1.f,
                                                                    true,// isAutomatable
                                                                    "Dry/Wet",
                                                                    AudioProcessorParameter::genericParameter,
@@ -26,8 +26,8 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
                                                           ;
                                                       });
 
-    NormalisableRange<float> timeRange = { 400.f, 4000.0f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("delayTime", "Delay Time", timeRange, 200.f,
+    NormalisableRange<float> timeRange = { 200.f, 900.0f };
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("delayTime", "Delay Time", timeRange, 300.f,
                                                                  true,// isAutomatable
                                                                  "Delay Time",
                                                                  AudioProcessorParameter::genericParameter,
@@ -85,7 +85,10 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
     appendExtraParams (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
-    setPrimaryParameter (wetDryParam);
+    setPrimaryParameter (colourParam);
+    
+    delayTime.setTargetValue (timeParam->get());
+    wetDry.setTargetValue (wetDryParam->get());
 }
 
 LongDelayProcessor::~LongDelayProcessor()
@@ -98,11 +101,48 @@ LongDelayProcessor::~LongDelayProcessor()
 }
 
 //============================================================================== Audio processing
-void LongDelayProcessor::prepareToPlay (double, int)
+void LongDelayProcessor::prepareToPlay (double sampleRate, int)
 {
+    Fs = static_cast<float> (sampleRate);
+    delayUnit.setFs (Fs);
+    wetDry.reset (Fs, 0.001f);
+    delayTime.reset (Fs, 0.001f);
+    delayUnit.setDelaySamples (delayTime.getNextValue()/1000.f * Fs);
 }
-void LongDelayProcessor::processBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    const auto numChannels = buffer.getNumChannels();
+    const auto numSamples = buffer.getNumSamples();
+
+    bool bypass;
+    float feedback;
+    {
+        const ScopedLock sl (getCallbackLock());
+        bypass = !fxOnParam->get();
+        feedback = feedbackParam->get() * 0.75f; // max feedback gain is 0.75
+    }
+    
+    if (bypass)
+        return;
+    
+    float dry, wet, x, y;
+    
+    float samplesOfDelay = delayTime.getNextValue()/1000.f * Fs;
+    delayUnit.setDelaySamples (samplesOfDelay);
+    
+    for (int s = 0; s < numSamples; ++s)
+    {
+        wet = wetDry.getNextValue();
+        delayTime.getNextValue(); // continue smoothing
+        dry = 1.f - wet;
+        for (int c = 0; c < numChannels; ++c)
+        {
+            x = buffer.getWritePointer (c)[s];
+            z[c] = delayUnit.processSample (x + feedback * z[c], c);
+            y = (z[c] * wet) + (x * dry);
+            buffer.getWritePointer (c)[s] = y;
+        }
+    }
 }
 
 const String LongDelayProcessor::getName() const { return TRANS ("Long Delay"); }
@@ -111,8 +151,41 @@ Identifier LongDelayProcessor::getIdentifier() const { return "Long Delay" + Str
 /** @internal */
 bool LongDelayProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void LongDelayProcessor::parameterValueChanged (int, float)
+void LongDelayProcessor::parameterValueChanged (int paramIndex, float value)
 {
+    const ScopedLock sl (getCallbackLock());
+    switch (paramIndex)
+    {
+        case (1):
+        {
+            // fx on/off (handled in processBlock)
+            break;
+        }
+        case (2):
+        {
+            wetDry.setTargetValue (value);
+            //
+            break;
+        }
+        case (3):
+        {
+        
+            break;
+        }
+        case (4):
+        {
+            
+            
+            break;
+        }
+        case (5):
+        {
+            delayTime.setTargetValue (value);
+            float samplesOfDelay = delayTime.getNextValue()/1000.f * Fs;
+            delayUnit.setDelaySamples (samplesOfDelay);
+            break;
+        }
+    }
 }
 
 }

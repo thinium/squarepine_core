@@ -57,7 +57,6 @@ String getInternalProcessorTypeName()
 #include "effects/LFOProcessor.cpp"
 #include "effects/MuteProcessor.cpp"
 #include "effects/PanProcessor.cpp"
-
 #include "effects/PolarityInversionProcessor.cpp"
 #include "effects/SimpleDistortionProcessor.cpp"
 #include "effects/SimpleEQProcessor.cpp"

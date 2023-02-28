@@ -1,3 +1,4 @@
+
 namespace djdawprocessor
 {
 
@@ -17,21 +18,22 @@ PhaserProcessor::PhaserProcessor (int idNum)
                                                                        String txt (percentage);
                                                                        return txt << "%";
                                                                    });
-
-    auto fxon = std::make_unique<AudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
-                                                      {
-                                                          if (value > 0)
-                                                              return TRANS ("On");
-                                                          return TRANS ("Off");
-                                                          ;
-                                                      });
-
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
+    
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On",true,
+                                                                 "FX On/Off ",
+                                                                 [] (bool value, int) -> String {
+                                                                     if (value > 0)
+                                                                         return TRANS("On");
+                                                                     return TRANS("Off");
+                                                                     ;
+                                                                 });
+    
+    StringArray options{"1/16","1/8","1/4","1/2","1","2","4","8","16"};
     auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
 
     
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
@@ -80,9 +82,14 @@ PhaserProcessor::PhaserProcessor (int idNum)
     setPrimaryParameter (wetDryParam);
     
     phase.setFrequency (1.f/(timeParam->get()/1000.f));
+    phaseWarble.setFrequency (2.f);
     
-    apf.setFilterType (DigitalFilter::FilterType::APF);
-    apf.setQ (1.f);
+    apf1.setFilterType (DigitalFilter::FilterType::APF);
+    apf1.setQ (1.f);
+    apf2.setFilterType (DigitalFilter::FilterType::APF);
+    apf2.setQ (1.f);
+    apf3.setFilterType (DigitalFilter::FilterType::APF);
+    apf3.setQ (1.f);
 }
 
 PhaserProcessor::~PhaserProcessor()
@@ -99,8 +106,11 @@ void PhaserProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
     const ScopedLock sl (getCallbackLock());
-    apf.setFs (Fs);
+    apf1.setFs (Fs);
+    apf2.setFs (Fs);
+    apf3.setFs (Fs);
     phase.prepare (Fs,bufferSize);
+    phaseWarble.prepare (Fs,bufferSize);
 }
 void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -109,41 +119,62 @@ void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     
     float wet;
     bool bypass;
-    float depth;
+    float warble;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         phase.setFrequency (1.f/(timeParam->get()/1000.f));
         bypass = !fxOnParam->get();
-        depth = xPadParam->get();
+        warble = xPadParam->get();
     }
     
     if (bypass)
         return;
     
-    double lfoSample;
+    fillMultibandBuffer (buffer);
+    
+    float lfoSample;
+    float warbleSample;
     //
     for (int c = 0; c < numChannels ; ++c)
     {
         for (int n = 0; n < numSamples ; ++n)
         {
             lfoSample = phase.getNextSample(c);
-            float x = buffer.getWritePointer(c) [n];
+            warbleSample = phaseWarble.getNextSample(c);
             
-            float normLFO = 0.5f * sin(lfoSample) + 0.5f;
-            float value = static_cast<float> (depthSmooth[c] * normLFO * 0.5 + 0.5);
-            float freqHz = 4.f * std::powf(10.f, value + 2.f); // 400 - 4000
-            apf.setFreq (freqHz);
+            float x = multibandBuffer.getWritePointer(c) [n];
             
-            float wetSample = apf.processSample (x, c);
+            if (count < UPDATEFILTERS)
+                count++; // we want to avoid re-calulating filters every sample
+            else
+            {
+                float normLFO = 0.5f * sin(lfoSample) + 0.5f;
+                float warbleLFO = .05f * warbleSmooth[c] * sin(warbleSample);
+                float value = static_cast<float> (normLFO * 0.5 + 0.5 + warbleLFO);
+                float freqHz = 4.f * std::powf(10.f, value + 2.f); // 400 - 4000
+                
+                apf1.setFreq (freqHz);
+                apf2.setFreq (freqHz);
+                apf3.setFreq (freqHz);
+                count = 0;
+            }
             
-            float y = x + wetSmooth[c] * wetSample;
+            float wetSample = apf1.processSample (x, c);
+            wetSample = apf2.processSample (wetSample, c);
+            wetSample = apf3.processSample (wetSample, c);
+            //float y = x + wetSmooth[c] * wetSample;
+            float y = wetSmooth[c] * wetSample;
             
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            depthSmooth[c] = 0.999f * depthSmooth[c] + 0.001f * depth;
-            buffer.getWritePointer(c) [n] = y;
+            warbleSmooth[c] = 0.999f * warbleSmooth[c] + 0.001f * warble;
+            multibandBuffer.getWritePointer(c) [n] = y;
         }
     }
+    
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+    
 }
 
 const String PhaserProcessor::getName() const { return TRANS ("Phaser"); }
@@ -152,13 +183,15 @@ Identifier PhaserProcessor::getIdentifier() const { return "Phaser" + String (id
 /** @internal */
 bool PhaserProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void PhaserProcessor::parameterValueChanged (int paramIndex, float /*value*/)
+void PhaserProcessor::parameterValueChanged (int paramIndex, float value)
 {
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
 
     //Subtract the number of new parameters in this processor
     BandProcessor::parameterValueChanged (id, value);
+    
+    BandProcessor::parameterValueChanged (paramIndex, value);
     
     const ScopedLock sl (getCallbackLock());
     switch (paramIndex)

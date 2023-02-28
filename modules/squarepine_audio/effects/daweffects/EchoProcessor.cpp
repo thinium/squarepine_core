@@ -1,3 +1,4 @@
+
 namespace djdawprocessor
 {
 
@@ -31,7 +32,7 @@ EchoProcessor::EchoProcessor (int idNum)
     auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
 
     NormalisableRange<float> timeRange = { 10.f, 4000.f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
@@ -130,40 +131,18 @@ EchoProcessor::EchoProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    addParameterWithCallback (wetDryParam, [&] (float& value) {
-        wetDry.setTargetValue (jlimit (0.f, 1.f, value));
-    });
     layout.add (std::move (beat));
-    addParameterWithCallback (beatParam, [&] (float&) {
-        DBG ("Beat");
-    });
     layout.add (std::move (time));
-    addParameterWithCallback (timeParam, [&] (float& value) {//delay time
-        auto range = timeParam->getNormalisableRange().getRange();
-        auto valMS = (float) jlimit ((int) range.getStart(), (int) range.getEnd(), roundToInt (value));
-        auto t = (getSampleRate() / 1000) * valMS;
-        delayTime.setTargetValue ((float) t);
-    });
     layout.add (std::move (other));
-    addParameterWithCallback (xPadParam, [&] (float&) {
-      
-    });
 
     layout.add (std::move (feedback));
-    addParameterWithCallback (feedbackParam, [&] (float&) {
-      
-    });
-    //setupBandParameters (layout);
+
+    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
     
-    ParameterLinker timeParamLinker;
     
-    timeParamLinker.setPrimaryParameter(timeParam);
-    timeParamLinker.addParameterToLink(beatParam);
-    
-    linkParameters(timeParamLinker);
 }
 
 EchoProcessor::~EchoProcessor()
@@ -179,8 +158,9 @@ EchoProcessor::~EchoProcessor()
 //============================================================================== Audio processing
 void EchoProcessor::prepareToPlay (double Fs, int bufferSize)
 {
+    BandProcessor::prepareToPlay (Fs, bufferSize);
+    
     const ScopedLock lock (getCallbackLock());
-    InsertProcessor::prepareToPlay (Fs, bufferSize);
 
     delayUnit.setFs ((float) Fs);
     wetDry.reset (Fs, 0.001f);
@@ -195,26 +175,39 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    const ScopedLock lock (getCallbackLock());
-
-    bool bypass = !fxOnParam->get();
+    bool bypass;
+    float feedbackAmp;
+    {
+        const ScopedLock lock (getCallbackLock());
+        bypass = !fxOnParam->get();
+        feedbackAmp = feedbackParam->get(); // appears to be constant from hardware demo
+    }
+    
     if (bypass)
         return;
     
+    fillMultibandBuffer (buffer);
+    
     float dry, wet, x, y;
+    wet = wetDry.getNextValue();
+    
     for (int s = 0; s < numSamples; ++s)
     {
         wet = wetDry.getNextValue();
-        dry = 1.f - wet;
+        //dry = 1.f - wet;
         for (int c = 0; c < numChannels; ++c)
         {
-            x = buffer.getWritePointer (c)[s];
-            y = (z[c] * wet) + (x * dry);
+            x = multibandBuffer.getWritePointer (c)[s];
+            y = (z[c] * feedbackAmp) + x;
             z[c] = delayUnit.processSample (y, c);
-            buffer.getWritePointer (c)[s] = y;
+            multibandBuffer.getWritePointer (c)[s] = y;
         }
     }
     
+    multibandBuffer.applyGain (wet);
+
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
 }
 
 const String EchoProcessor::getName() const { return TRANS ("Echo"); }
@@ -225,6 +218,7 @@ bool EchoProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
 void EchoProcessor::parameterValueChanged (int paramIndex, float value)
 {
+    BandProcessor::parameterValueChanged (paramIndex, value);
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
     const ScopedLock sl (getCallbackLock());

@@ -1,8 +1,14 @@
 namespace djdawprocessor
 {
-/// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
+/// TODO: default is 2000ms
+/// TODO: Appears to be modulated LPF with a Q=4, 2nd-order, "level" is blend between wet/dry (true blend)
+/// Delay time (min/max range) sync'd to tempo
+/// X-Pad appears to add an extra modulated warble sinewave to the frequency sweep. Essentially, as the
+// frequency sweeps across the spectrum at a relatively slow rate (2000 ms), there is another LFO that
+// causes the frequency to warble a few Hz above and below the primary. This happens relatively quickly.
+// When X-pad is at maximum (default), there is no warble. As the value goes down, the warble increases.
 
-class LFOFilterProcessor final : public InsertProcessor
+class LFOFilterProcessor final : public BandProcessor
 {
 public:
     //Constructor with ID
@@ -27,15 +33,19 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
-    AudioParameterBool* fxOnParam = nullptr;
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
     
     PhaseIncrementer phase;
+    PhaseIncrementer phaseWarble;
     DigitalFilter bpf;
     
+    int count = 0;
+    static const int UPDATEFILTERS = 8;
+    
     float wetSmooth[2] = {0.0};
-    float depthSmooth[2] = {5.0};
+    float warbleSmooth[2] = {5.0};
 };
 
 }

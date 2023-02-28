@@ -32,8 +32,15 @@ private:
     
     
     int idNumber = 1;
+
+    SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
+    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 500.0f };
     
+    FractionalDelay delayUnit;
     
+    float z[2] = {0.f};
+    
+    float Fs = 44100.f;
 };
 
 }

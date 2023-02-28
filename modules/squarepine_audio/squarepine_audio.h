@@ -133,6 +133,7 @@ String getInternalProcessorTypeName();
 #include "effects/InsertProcessor.h"
 #include "effects/PhaseIncrementer.h"
 #include "effects/SEMFilter.h"
+#include "effects/CrossoverFilter.h"
 #include "effects/ADSRProcessor.h"
 #include "effects/BitCrusherProcessor.h"
 #include "effects/ChorusProcessor.h"

@@ -1,7 +1,14 @@
+
 namespace djdawprocessor
 {
 
-/// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
+/// This appears to be a pitch shifting effect down. I guess it is supposed to simulate
+/// what happens if a DJ stops a turn table. The time it takes for the "slow-down" or "brake"
+/// seems to be based on the sync'd "time" and XPAD (both control similar time parameter).
+/// The extra knob seems to be a multiplier on the time for the brake to happen. When
+/// the knob is at a minimum, no pitch shifting occurs. When it is slightly above minimum,
+/// the pitch shift all the way down takes a long time. When it is at higher settings (50% or 100%)
+/// the pitch shift happens almost instantaneously.
 
 class VinylBreakProcessor final : public BandProcessor
 {
@@ -26,11 +33,28 @@ private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     AudioParameterChoice* beatParam = nullptr;
     NotifiableAudioParameterFloat* timeParam = nullptr;
+    NotifiableAudioParameterFloat* speedParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
-    AudioParameterBool* fxOnParam = nullptr;
-
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
+    
+    float Fs = 44100.f;
+    
     int idNumber = 1;
+
+    AudioBuffer<float> effectBuffer;
+    
+    float wetSmooth[2] = {0.f};
+    
+    bool useElastiquePro = false;
+    zplane::ElastiquePtr elastique;
+    float pitchFactorTarget = 1.f;
+    float pitchFactorSmooth = 1.f;
+    float alpha = 0.99f;
+    
+    AudioBuffer<float> inputBuffer;
+    AudioBuffer<float> outputBuffer;
+  
 };
 
 }

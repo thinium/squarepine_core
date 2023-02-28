@@ -108,15 +108,20 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    if (isBypassed()
-        || buffer.hasBeenCleared()
-        || numChannels <= 0
-        || numSamples <= 0)
-        return;
-
+    float wet;
+    float dry;
+    bool bypass;
+    {
+        const ScopedLock sl (getCallbackLock());
+        bypass = !fxOnParam->get();
+        wet = wetDryParam->get();
+        dry = 1.f - wetDryParam->get();
+    }
+    
     updateReverbParams();
 
-    auto chans = buffer.getArrayOfWritePointers();
+    fillMultibandBuffer (buffer);
+    auto** chans = multibandBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
 
@@ -133,6 +138,12 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         default:
             break;
     }
+    
+    multibandBuffer.applyGain (wet);
+    buffer.applyGain (dry);
+    
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
 }
 
 const String ReverbProcessor::getName() const { return TRANS ("Reverb"); }
@@ -164,8 +175,8 @@ void ReverbProcessor::updateReverbParams()
 
     localParams.roomSize = timeParam->get();
     localParams.damping = 1 - reverbAmountParam->get();
-    localParams.wetLevel = wetDryParam->get();
-    localParams.dryLevel = 1 - wetDryParam->get();
+    localParams.wetLevel = 1.f; //wetDryParam->get();
+    localParams.dryLevel = 0.f; //1 - wetDryParam->get();
     localParams.width = 1;
     localParams.freezeMode = 0;
 

@@ -247,8 +247,21 @@ public:
             }
         }
     }
-
-    double processSample (double x, int channel)
+    
+    void processToOutputBuffer (juce::AudioBuffer<float>& inBuffer, juce::AudioBuffer<float>& outBuffer)
+    {
+        for (int c = 0 ; c < inBuffer.getNumChannels() ; ++c)
+        {
+            for (int n = 0 ; n < inBuffer.getNumSamples() ; ++n)
+            {
+                float x = inBuffer.getWritePointer (c)[n];
+                float y = processSample (x,c);
+                outBuffer.getWritePointer (c)[n] = y;
+            }
+        }
+    }
+    
+    double processSample(double x, int channel)
     {
         performSmoothing();
 

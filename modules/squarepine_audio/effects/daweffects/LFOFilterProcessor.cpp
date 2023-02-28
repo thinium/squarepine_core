@@ -30,7 +30,7 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
 
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
@@ -74,11 +74,13 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     layout.add (std::move (beat));
     layout.add (std::move (time));
     layout.add (std::move (other));
+    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
     
     phase.setFrequency (1.f/(timeParam->get()/1000.f));
+    phaseWarble.setFrequency (3.f);
     
     bpf.setFilterType (DigitalFilter::FilterType::BPF2);
     bpf.setQ (0.7071f);
@@ -96,9 +98,13 @@ LFOFilterProcessor::~LFOFilterProcessor()
 //============================================================================== Audio processing
 void LFOFilterProcessor::prepareToPlay (double Fs, int bufferSize)
 {
+    
+    BandProcessor::prepareToPlay (Fs, bufferSize);
+    
     const ScopedLock sl (getCallbackLock());
     bpf.setFs (Fs);
     phase.prepare (Fs,bufferSize);
+    phaseWarble.prepare (Fs, bufferSize);
 }
 void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -107,39 +113,58 @@ void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mi
     
     float wet;
     bool bypass;
-    float depth;
+    float warble;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         bypass = !fxOnParam->get();
-        depth = xPadParam->get();
+        warble = xPadParam->get();
     }
     
     if (bypass)
         return;
     
-    double lfoSample;
+    fillMultibandBuffer (buffer);
+    
+    float lfoSample;
+    float warbleSample;
     //
     for (int c = 0; c < numChannels ; ++c)
     {
         for (int n = 0; n < numSamples ; ++n)
         {
-            lfoSample = phase.getNextSample(c);
-            float x = buffer.getWritePointer(c) [n];
+            lfoSample = static_cast<float> (phase.getNextSample(c));
+            warbleSample = static_cast<float> (phaseWarble.getNextSample(c));
+            float x = multibandBuffer.getWritePointer(c) [n];
             
-            float normLFO = 0.5f * sin(lfoSample) + 0.5f;
-            float value = static_cast<float> (depthSmooth[c] * normLFO * 0.5 + 0.5);
-            float freqHz = 2.f * std::powf(10.f, (1.7f * value) + 2.f); // 200 - 10000
-            bpf.setFreq (freqHz);
             
-            float wetSample = bpf.processSample (x, c);
+            if (count < UPDATEFILTERS)
+                count++; // we want to avoid re-calulating filters every sample
+            else
+            {
+                float normLFO = 0.5f * sinf(lfoSample) + 0.5f;
+                float warbleLFO = 0.05f * warbleSmooth[c] * sinf(warbleSample);
+                float value = normLFO * 0.5f + 0.5f + warbleLFO;
+                float freqHz = 2.f * std::powf(10.f, (1.7f * value) + 2.f); // 200 - 10000
+                bpf.setFreq (freqHz);
+                count = 0;
+            }
             
-            float y = (1.f - wetSmooth[c]) * x + wetSmooth[c] * wetSample;
+            
+            
+            float wetSample = static_cast<float> (bpf.processSample (x, c));
+            
+            ///float y = (1.f - wetSmooth[c]) * x + wetSmooth[c] * wetSample;
+            float y = wetSmooth[c] * wetSample;
             
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            depthSmooth[c] = 0.999f * depthSmooth[c] + 0.001f * depth;
-            buffer.getWritePointer(c) [n] = y;
+            warbleSmooth[c] = 0.999f * warbleSmooth[c] + 0.001f * warble;
+            multibandBuffer.getWritePointer (c)[n] = y;
+            buffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
         }
+        
+        //for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
     }
 }
 

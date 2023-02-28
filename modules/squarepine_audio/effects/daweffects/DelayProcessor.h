@@ -7,14 +7,33 @@
 namespace djdawprocessor
 {
 
-class FractionalDelay {
-    
+class ModulatedDelay {
+    // Use in situations when smoothing of the delay is unnecessary because it comes from an LFO
 public:
     
-    FractionalDelay();
+    float processSample(float x,int channel);
+
+    void setFs(float _Fs);
     
-    // Destructor
-    ~FractionalDelay();
+    void setDelaySamples(float _delay);
+
+    void clearDelay();
+private:
+    
+    float Fs = 48000.f;
+    
+    float delay = 5.f;
+    
+    static const int MAX_BUFFER_SIZE = 384000;
+    float delayBuffer[MAX_BUFFER_SIZE][2] = {{0.0f}};
+    int index[2] = {0};
+
+};
+
+
+class FractionalDelay {
+    // Includes smoothing of delay, see ModulatedDelay when using an LFO (smoothing unnecessary)
+public:
     
     float processSample(float x,int channel);
     
@@ -39,6 +58,9 @@ private:
 
 
 //This is a wrapper around Eric Tarr's Fractional Delay class that can be integrated with Juce/Squarepine processors
+// TODO: wet/dry is true 50/50 blend (increase + decrease dry/wet)
+// TODO: initial value is 500 ms, min=1ms, max = 4000ms
+/// XPad is sync'd delay time
 
 class DelayProcessor final : public InsertProcessor
 {

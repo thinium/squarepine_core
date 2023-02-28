@@ -1,3 +1,4 @@
+
 namespace djdawprocessor
 {
 
@@ -11,25 +12,26 @@ TransEffectProcessor::TransEffectProcessor (int idNum): idNumber (idNum)
                                                                    "Dry/Wet",
                                                                    AudioProcessorParameter::genericParameter,
                                                                    [] (float value, int) -> String {
-        int percentage = roundToInt (value * 100);
-        String txt (percentage);
-        return txt << "%";
-    });
-    
-    auto fxon = std::make_unique<AudioParameterBool> ("fxonoff", "FX On",true,
-                                                      "FX On/Off ",
-                                                      [] (bool value, int) -> String {
-        if (value > 0)
-            return TRANS("On");
-        return TRANS("Off");
-        ;
-    });
+                                                                       int percentage = roundToInt (value * 100);
+                                                                       String txt (percentage);
+                                                                       return txt << "%";
+                                                                   });
+
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On",true,
+                                                                 "FX On/Off ",
+                                                                 [] (bool value, int) -> String {
+                                                                     if (value > 0)
+                                                                         return TRANS("On");
+                                                                     return TRANS("Off");
+                                                                     ;
+                                                                 });
     
     StringArray options{"1/16","1/8","1/4","1/2","1","2","4","8","16"};
     auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
 
-    NormalisableRange<float> timeRange = { 10.f, 32000.f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+
+    NormalisableRange<float> timeRange = { 10.f, 4000.f };
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
@@ -71,6 +73,7 @@ TransEffectProcessor::TransEffectProcessor (int idNum): idNumber (idNum)
     layout.add (std::move (beat));
     layout.add (std::move (time));
     layout.add (std::move (other));
+    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
     
     setPrimaryParameter (wetDryParam);
@@ -90,6 +93,8 @@ TransEffectProcessor::~TransEffectProcessor()
 //============================================================================== Audio processing
 void TransEffectProcessor::prepareToPlay (double Fs, int bufferSize)
 {
+    BandProcessor::prepareToPlay (Fs, bufferSize);
+    
     const ScopedLock sl (getCallbackLock());
     phase.prepare (Fs,bufferSize);
 }
@@ -99,11 +104,13 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
     const int numSamples = buffer.getNumSamples();
     
     float wet;
+    float dry;
     bool bypass;
     float depth;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
+        dry = 1.f - wet;
         phase.setFrequency (1.f/(timeParam->get()/1000.f));
         bypass = !fxOnParam->get();
         depth = xPadParam->get();
@@ -112,6 +119,8 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
     if (bypass)
         return;
     
+    fillMultibandBuffer (buffer);
+    
     double lfoSample;
     //
     for (int c = 0; c < numChannels ; ++c)
@@ -119,7 +128,7 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
         for (int n = 0; n < numSamples ; ++n)
         {
             lfoSample = phase.getNextSample(c);
-            float x = buffer.getWritePointer(c) [n];
+            float x = multibandBuffer.getWritePointer(c) [n];
             
             float amp = 1.f;
             if (lfoSample > M_PI)
@@ -132,13 +141,20 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
             
             float wetSample = x * combinedAmp;
             
-            float y = (1.f - wetSmooth[c]) * x + wetSmooth[c] * wetSample;
+            //float y = (1.f - wetSmooth[c]) * x + wetSmooth[c] * wetSample;
+            float y = wetSample;
             
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
             depthSmooth[c] = 0.999f * depthSmooth[c] + 0.001f * depth;
-            buffer.getWritePointer(c) [n] = y;
+            multibandBuffer.getWritePointer(c) [n] = y;
         }
     }
+    
+    multibandBuffer.applyGain (wet);
+    buffer.applyGain (dry);
+    
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
 }
 
 const String TransEffectProcessor::getName() const { return TRANS ("Trans"); }
@@ -153,7 +169,7 @@ void TransEffectProcessor::parameterValueChanged (int id, float value)
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
     
     //Subtract the number of new parameters in this processor
-    //BandProcessor::parameterValueChanged (id, value);
+    BandProcessor::parameterValueChanged (id, value);
 }
 
 }

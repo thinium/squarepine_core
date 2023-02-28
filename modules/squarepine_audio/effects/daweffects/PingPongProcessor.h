@@ -1,7 +1,10 @@
+
 namespace djdawprocessor
 {
 
-/// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
+/// Stereo, alternative echo
+/// There is some galluping pattern, see manual for hints.
+/// XPad is sync'd delay time
 
 class PingPongProcessor final : public BandProcessor
 {
@@ -28,9 +31,18 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
-    AudioParameterBool* fxOnParam = nullptr;
+    NotifiableAudioParameterFloat* feedbackParam = nullptr;
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+
+    FractionalDelay delayLeft;
+    FractionalDelay delayRight;
+    
+    float z = 0.f;
+    float wetSmooth = 0.5f;
+    
+    float Fs = 48000.f;
 };
 
 }

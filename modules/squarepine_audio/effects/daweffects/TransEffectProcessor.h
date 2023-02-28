@@ -1,8 +1,20 @@
+
 namespace djdawprocessor
 {
 
+/// TODO: default time is 500 ms. Seems to be square wave amplitude modulation (possibly smoothed to avoid discontinuities)
+/// TODO: wet/dry is true blend between unprocessed and processed
+// X-PAD sync'd control of time
 
-class TransEffectProcessor final : public InsertProcessor
+/// The beat FX have three bands of processing (low, mid, high). This gives the user the opportunity
+/// to only have the FX applied to specific frequency bands and not to others. For the most part,
+/// many of the FX are parallel effects where the multi-band processing is only on the effected
+/// signal. The TRANS effect is one where only the effected/wet signal is output when the extra
+/// parameter is at the max. I used this to analyze the low/mid/high. It appears to use Linkwitz-Riley
+/// filters with cut-offs at 300 Hz and 5 kHz. A recording of this was captured. 
+
+
+class TransEffectProcessor final : public BandProcessor
 {
 public:
     //Constructor with ID
@@ -28,8 +40,7 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
-    AudioParameterBool* fxOnParam = nullptr;
-    
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
     
     int idNumber = 1;
 

@@ -1,9 +1,12 @@
 namespace djdawprocessor
 {
 
-/// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
+/// TODO: Feedback seems to be constant and long, need to measure with IR to watch rate of reduction
+/// Level parameter is wet/dry control. Dry signal is constant amplitude, wet signal is blended in by parameter
+/// Delay length (min/max range) is sync'd to tempo
+/// XPad is sync'd delay time
 
-class EchoProcessor final : public InsertProcessor
+class EchoProcessor final : public BandProcessor
 
 {
 public:
@@ -30,7 +33,7 @@ private:
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
     NotifiableAudioParameterFloat* feedbackParam = nullptr;
-    AudioParameterBool* fxOnParam = nullptr;
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
     
