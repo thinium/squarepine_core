@@ -52,8 +52,8 @@ PitchProcessor::PitchProcessor (int idNum)
                                                                  });
 
     NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "X Pad Division", beatRange, 3,
-                                                                  false,// isAutomatable
+    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "X Pad Division", beatRange, 0.f,
+                                                                  true,// isAutomatable
                                                                   "X Pad Division ",
                                                                   AudioProcessorParameter::genericParameter,
                                                                   [] (float value, int) -> String
