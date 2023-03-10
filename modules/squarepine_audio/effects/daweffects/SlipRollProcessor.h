@@ -22,11 +22,8 @@ public:
     void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    AudioParameterChoice* beatParam = nullptr;
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
-    NotifiableAudioParameterFloat* xPadParam = nullptr;
-    NotifiableAudioParameterBool* onOffParam = nullptr;
     NotifiableAudioParameterBool* fxOnParam = nullptr;
     
     int idNumber = 1;

@@ -27,10 +27,6 @@ EchoProcessor::EchoProcessor (int idNum)
                                                           ;
                                                       });
 
-    NormalisableRange<float> beatRange = { 0.f, 8.0 };
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
-
     NormalisableRange<float> timeRange = { 10.f, 4000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
@@ -43,62 +39,6 @@ EchoProcessor::EchoProcessor (int idNum)
                                                                      ;
                                                                  });
 
-    NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "X Pad Division", beatRange, 3,
-                                                                  false,// isAutomatable
-                                                                  "X Pad Division ",
-                                                                  AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String
-                                                                  {
-                                                                      int val = roundToInt (value);
-                                                                      String txt;
-                                                                      switch (val)
-                                                                      {
-                                                                          case 0:
-                                                                              txt = "1/16";
-                                                                              break;
-                                                                          case 1:
-                                                                              txt = "1/8";
-                                                                              break;
-                                                                          case 2:
-                                                                              txt = "1/4";
-                                                                              break;
-                                                                          case 3:
-                                                                              txt = "1/2";
-                                                                              break;
-                                                                          case 4:
-                                                                              txt = "1";
-                                                                              break;
-                                                                          case 5:
-                                                                              txt = "2";
-                                                                              break;
-                                                                          case 6:
-                                                                              txt = "4";
-                                                                              break;
-                                                                          case 7:
-                                                                              txt = "8";
-                                                                              break;
-                                                                          case 8:
-                                                                              txt = "16";
-                                                                              break;
-                                                                          default:
-                                                                              txt = "1";
-                                                                              break;
-                                                                      }
-
-                                                                      return txt;
-                                                                  });
-
-    NormalisableRange<float> feedbackRange = { 0.f, 1.0f };
-    auto feedback = std::make_unique<NotifiableAudioParameterFloat> ("feedback", "Feedback", feedbackRange, 0.5f,
-                                                                     true,// isAutomatable
-                                                                     "Feedback ",
-                                                                     AudioProcessorParameter::genericParameter,
-                                                                     [] (float value, int) -> String {
-                                                                         int percentage = roundToInt (value * 100);
-                                                                         String txt (percentage);
-                                                                         return txt << "%";
-                                                                     });
     
     delayUnit.setDelaySamples (200 * 48);
     wetDry.setTargetValue (0.5);
@@ -110,32 +50,19 @@ EchoProcessor::EchoProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
     timeParam = time.get();
     timeParam->addListener (this);
 
-    xPadParam = other.get();
-    xPadParam->addListener (this);
-
-    feedbackParam = feedback.get();
-    feedbackParam->addListener (this);
+//    feedbackParam = feedback.get();
+//    feedbackParam->addListener (this);
     
-//    syncParam = sync.get();
-//    syncParam->addListener (this);
-
-//    testParam = test.get();
-//    testParam->addListener (this);
     
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
-    layout.add (std::move (other));
 
-    layout.add (std::move (feedback));
+    //layout.add (std::move (feedback));
 
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
@@ -149,10 +76,8 @@ EchoProcessor::~EchoProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
     timeParam->removeListener (this);
-    xPadParam->removeListener (this);
-    feedbackParam->removeListener (this);
+   // feedbackParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
@@ -176,11 +101,11 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     const auto numSamples = buffer.getNumSamples();
 
     bool bypass;
-    float feedbackAmp;
+    float feedbackAmp = 0.6f;
     {
         const ScopedLock lock (getCallbackLock());
         bypass = !fxOnParam->get();
-        feedbackAmp = feedbackParam->get(); // appears to be constant from hardware demo
+        //feedbackAmp = feedbackParam->get(); // appears to be constant from hardware demo
     }
     
     if (bypass)
@@ -188,7 +113,7 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     
     fillMultibandBuffer (buffer);
     
-    float dry, wet, x, y;
+    float wet, x, y;
     wet = wetDry.getNextValue();
     
     for (int s = 0; s < numSamples; ++s)
@@ -237,18 +162,8 @@ void EchoProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-        
-            break;
-        }
-        case (4):
-        {
             float samplesOfDelay = value/1000.f * static_cast<float> (sampleRate);
             delayUnit.setDelaySamples (samplesOfDelay);
-            break;
-        }
-        case (5):
-        {    
-            
             break;
         }
     }

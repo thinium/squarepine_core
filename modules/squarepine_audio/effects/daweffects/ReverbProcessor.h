@@ -29,10 +29,9 @@ public:
     void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    NotifiableAudioParameterFloat* reverbAmountParam = nullptr;
+    NotifiableAudioParameterFloat* filterParam = nullptr;
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
-    NotifiableAudioParameterFloat* xPadParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;
     //Using the Juce reverb
     Reverb reverb;

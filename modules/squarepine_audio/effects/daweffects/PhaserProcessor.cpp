@@ -28,10 +28,6 @@ PhaserProcessor::PhaserProcessor (int idNum)
                                                                      ;
                                                                  });
     
-    StringArray options{"1/16","1/8","1/4","1/2","1","2","4","8","16"};
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
-
-    
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
@@ -59,10 +55,7 @@ PhaserProcessor::PhaserProcessor (int idNum)
     wetDryParam->addListener (this);
 
     fxOnParam = fxon.get();
-    fxOnParam->addListener (this);
-
-    beatParam = beat.get();
-    beatParam->addListener (this);
+    fxOnParam->addListener(this);
 
     timeParam = time.get();
     timeParam->addListener (this);
@@ -73,7 +66,6 @@ PhaserProcessor::PhaserProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
     layout.add (std::move (other));
     setupBandParameters (layout);
@@ -95,8 +87,7 @@ PhaserProcessor::PhaserProcessor (int idNum)
 PhaserProcessor::~PhaserProcessor()
 {
     wetDryParam->removeListener (this);
-    fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
+    fxOnParam->removeListener(this);
     timeParam->removeListener (this);
     xPadParam->removeListener (this);
 }
@@ -209,15 +200,10 @@ void PhaserProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-        
-            break;
-        }
-        case (4):
-        {
 
             break; // time
         }
-        case (5):
+        case (4):
         {
             //depth = 20.0 * value;
             break; // Modulation

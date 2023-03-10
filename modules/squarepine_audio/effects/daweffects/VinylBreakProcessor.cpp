@@ -32,9 +32,6 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
         ;
     });
 
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
-
     NormalisableRange<float> timeRange = { 10.f, 4000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
@@ -46,18 +43,6 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
                                                                      return txt << "ms";
                                                                      ;
                                                                  });
-
-    NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "X Pad Division", otherRange, 0.f,
-                                                                  true,// isAutomatable
-                                                                  "X Pad Division ",
-                                                                  AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String
-                                                                  {
-                                                                      int percentage = roundToInt (value * 100);
-                                                                      String txt (percentage);
-                                                                      return txt << "%";
-                                                                  });
     
     // Multiplier for speed the vinyl break happens
     NormalisableRange<float> speedRange = { 0.f, 1.0f };
@@ -77,14 +62,8 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
     timeParam = time.get();
     timeParam->addListener (this);
-
-    xPadParam = other.get();
-    xPadParam->addListener (this);
     
     speedParam = speed.get();
     speedParam->addListener (this);
@@ -92,9 +71,7 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
-    layout.add (std::move (other));
     layout.add (std::move (speed));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
@@ -106,9 +83,7 @@ VinylBreakProcessor::~VinylBreakProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
     timeParam->removeListener (this);
-    xPadParam->removeListener (this);
     speedParam->removeListener (this);
 }
 
@@ -249,17 +224,11 @@ void VinylBreakProcessor::parameterValueChanged (int id, float value)
         }
         case (2):
         {
-            //pitchFactorSmooth = 1.f;
-            //pitchFactorTarget = 1.f;
+            //wet/dry
             
             break;
         }
         case (3):
-        {
-        
-            break;
-        }
-        case (4):
         {
             
             float time = value / 1000.f;
@@ -270,12 +239,7 @@ void VinylBreakProcessor::parameterValueChanged (int id, float value)
 
             break;
         }
-        case (5):
-        {
-            // XPAD
-            break;
-        }
-        case (6):
+        case (4):
         {
             // Speed
             if (value < 0.001)

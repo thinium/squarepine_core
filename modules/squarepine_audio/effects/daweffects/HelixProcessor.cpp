@@ -18,15 +18,13 @@ HelixProcessor::HelixProcessor (int idNum)
                                                                        String txt (percentage);
                                                                        return txt << "%";
                                                                    });
-    auto fxon = std::make_unique<AudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
-                                                      {
-                                                          if (value > 0)
-                                                              return TRANS ("On");
-                                                          return TRANS ("Off");
-                                                          ;
-                                                      });
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
+
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String {
+        if (value > 0)
+            return TRANS ("On");
+        return TRANS ("Off");
+        ;
+    });
 
     NormalisableRange<float> timeRange = { 1.f, 4000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
@@ -40,43 +38,20 @@ HelixProcessor::HelixProcessor (int idNum)
                                                                      ;
                                                                  });
 
-    NormalisableRange<float> pitchRange = { -50.f, 100.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("pitch", "Pitch", pitchRange, 0.f,
-                                                                  true,// isAutomatable
-                                                                  "Pitch ",
-                                                                  AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String
-                                                                  {
-                                                                      String txt (roundToInt (value));
-                                                                      return txt;
-                                                                  });
-
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
-
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
+    
     timeParam = time.get();
     timeParam->addListener (this);
-
-    xPadParam = other.get();
-    xPadParam->addListener (this);
-
-//    onOffParam = onoff.get();
-//    onOffParam->addListener (this);
 
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
-    layout.add (std::move (other));
     setupBandParameters (layout);
-    //layout.add (std::move (onoff));
 
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
@@ -89,10 +64,7 @@ HelixProcessor::HelixProcessor (int idNum)
 HelixProcessor::~HelixProcessor()
 {
     wetDryParam->removeListener (this);
-    beatParam->removeListener (this);
     timeParam->removeListener (this);
-    xPadParam->removeListener (this);
-    //onOffParam->removeListener (this);
     fxOnParam->removeListener (this);
 }
 
@@ -234,19 +206,13 @@ void HelixProcessor::parameterValueChanged (int paramIndex, float value)
         
             break;
         }
-        case (4):
-        {
-            //float samplesOfDelay = value/1000.f * static_cast<float> (sampleRate);
-            
-            break;
-        }
-        case (5):
-        {
-            
-            pitchFactorTarget = value/100.f + 1.f;
-            
-            break;
-        }
+//        case (5):
+//        {
+//
+//            pitchFactorTarget = value/100.f + 1.f;
+//
+//            break;
+//        }
     }
 }
 

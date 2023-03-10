@@ -26,9 +26,6 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
                                                           ;
                                                       });
 
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
-
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
@@ -42,7 +39,7 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
                                                                  });
 
     NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "Modulation", otherRange, 3,
+    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "Modulation", otherRange, 1.0f,
                                                                   true,// isAutomatable
                                                                   "Modulation ",
                                                                   AudioProcessorParameter::genericParameter,
@@ -59,9 +56,6 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
     timeParam = time.get();
     timeParam->addListener (this);
 
@@ -71,7 +65,6 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
     layout.add (std::move (other));
     setupBandParameters (layout);
@@ -90,7 +83,6 @@ LFOFilterProcessor::~LFOFilterProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
     timeParam->removeListener (this);
     xPadParam->removeListener (this);
 }
@@ -154,7 +146,6 @@ void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mi
             
             float wetSample = static_cast<float> (bpf.processSample (x, c));
             
-            ///float y = (1.f - wetSmooth[c]) * x + wetSmooth[c] * wetSample;
             float y = wetSmooth[c] * wetSample;
             
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
@@ -195,15 +186,10 @@ void LFOFilterProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-        
-            break;
-        }
-        case (4):
-        {
             phase.setFrequency (1.f/(value/1000.f));
             break; // time
         }
-        case (5):
+        case (4):
         {
             //depth = 20.0 * value;
             break; // Modulation

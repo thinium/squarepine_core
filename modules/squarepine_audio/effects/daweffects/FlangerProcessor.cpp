@@ -27,10 +27,6 @@ FlangerProcessor::FlangerProcessor (int idNum)
                                                                     ;
                                                                 });
 
-    NormalisableRange<float> beatRange = { 0.f, 8.0 };
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
-
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
@@ -60,9 +56,6 @@ FlangerProcessor::FlangerProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
     timeParam = time.get();
     timeParam->addListener (this);
 
@@ -72,7 +65,6 @@ FlangerProcessor::FlangerProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
     layout.add (std::move (other));
     setupBandParameters (layout);
@@ -88,7 +80,6 @@ FlangerProcessor::~FlangerProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
     timeParam->removeListener (this);
     xPadParam->removeListener (this);
 }
@@ -184,15 +175,10 @@ void FlangerProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-        
-            break;
-        }
-        case (4):
-        {
             
             break; // time
         }
-        case (5):
+        case (4):
         {
             //depth = 20.0 * value;
             break; // Modulation

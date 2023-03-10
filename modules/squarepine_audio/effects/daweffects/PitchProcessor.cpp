@@ -26,18 +26,6 @@ PitchProcessor::PitchProcessor (int idNum)
                                                                      return TRANS("Off");
                                                                      ;
                                                                  });
-    
-
-    NormalisableRange<float> beatRange = { -50, 100 };
-    auto beat = std::make_unique<NotifiableAudioParameterFloat> ("beat", "beat", beatRange, 0,
-                                                                 false,// isAutomatable
-                                                                 "Beat Division ",
-                                                                 AudioProcessorParameter::genericParameter,
-                                                                 [] (float value, int) -> String
-                                                                 {
-                                                                     String txt (roundToInt (value));
-                                                                     return txt;
-                                                                 });
 
     NormalisableRange<float> pitchRange = { -50.f, 100.0f };
     auto pitch = std::make_unique<NotifiableAudioParameterFloat> ("pitch", "Pitch", pitchRange, 0.f,
@@ -51,38 +39,19 @@ PitchProcessor::PitchProcessor (int idNum)
                                                                      ;
                                                                  });
 
-    NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "X Pad Division", beatRange, 0.f,
-                                                                  true,// isAutomatable
-                                                                  "X Pad Division ",
-                                                                  AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String
-                                                                  {
-                                                                      String txt (roundToInt (value));
-                                                                      return txt;
-                                                                  });
-
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
     pitchParam = pitch.get();
     pitchParam->addListener (this);
-
-    xPadParam = other.get();
-    xPadParam->addListener (this);
 
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (pitch));
-    layout.add (std::move (other));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
@@ -92,10 +61,8 @@ PitchProcessor::PitchProcessor (int idNum)
 PitchProcessor::~PitchProcessor()
 {
     wetDryParam->removeListener (this);
-    fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
+    fxOnParam->removeListener(this);
     pitchParam->removeListener (this);
-    xPadParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
@@ -139,12 +106,10 @@ void PitchProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
     
     float wet;
     bool bypass;
-    float depth;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         bypass = !fxOnParam->get();
-        depth = xPadParam->get();
     }
     
     if (bypass)
