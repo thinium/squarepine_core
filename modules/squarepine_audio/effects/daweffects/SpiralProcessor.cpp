@@ -71,7 +71,6 @@ SpiralProcessor::~SpiralProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     timeParam->removeListener (this);
-    // feedbackParam->removeListener (this);
 }
 
 //============================================================================== Audio processing

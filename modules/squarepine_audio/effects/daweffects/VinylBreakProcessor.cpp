@@ -251,6 +251,7 @@ void VinylBreakProcessor::parameterValueChanged (int id, float value)
 
             break;
         }
+        case (4):
         {
             // Speed
             if (value < 0.001)

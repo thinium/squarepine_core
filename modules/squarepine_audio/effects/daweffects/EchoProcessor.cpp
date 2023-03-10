@@ -58,8 +58,6 @@ idNumber (idNum)
     layout.add (std::move (wetdry));
     layout.add (std::move (time));
 
-    //layout.add (std::move (feedback));
-
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
