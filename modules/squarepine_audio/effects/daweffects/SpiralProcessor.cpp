@@ -38,6 +38,17 @@ SpiralProcessor::SpiralProcessor (int idNum)
                                                                      ;
                                                                  });
 
+//    NormalisableRange<float> feedbackRange = { 0.f, 1.0f };
+//    auto feedback = std::make_unique<NotifiableAudioParameterFloat> ("feedback", "Feedback", feedbackRange, 0.5f,
+//                                                                     true,// isAutomatable
+//                                                                     "Feedback ",
+//                                                                     AudioProcessorParameter::genericParameter,
+//                                                                     [] (float value, int) -> String {
+//                                                                         int percentage = roundToInt (value * 100);
+//                                                                         String txt (percentage);
+//                                                                         return txt << "%";
+//                                                                     });
+    
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
@@ -47,10 +58,14 @@ SpiralProcessor::SpiralProcessor (int idNum)
     timeParam = time.get();
     timeParam->addListener (this);
 
+    //    feedbackParam = feedback.get();
+    //    feedbackParam->addListener (this);
+    
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (time));
+    //layout.add (std::move (feedback));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
@@ -71,6 +86,7 @@ SpiralProcessor::~SpiralProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     timeParam->removeListener (this);
+    // feedbackParam->removeListener (this);
 }
 
 //============================================================================== Audio processing

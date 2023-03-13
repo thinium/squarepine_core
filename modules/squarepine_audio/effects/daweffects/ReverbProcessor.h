@@ -46,7 +46,6 @@ private:
     DigitalFilter hpf;
     DigitalFilter lpf;
     int idNumber = 1;
-
 };
 
 }

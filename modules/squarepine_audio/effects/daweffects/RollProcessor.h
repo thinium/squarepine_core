@@ -42,7 +42,6 @@ private:
     void fillTempBuffer ();
     
     float wetSmooth[2] = {0.0};
-
 };
 
 }
