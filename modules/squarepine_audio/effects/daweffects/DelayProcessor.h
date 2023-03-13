@@ -62,7 +62,7 @@ private:
 // TODO: initial value is 500 ms, min=1ms, max = 4000ms
 /// XPad is sync'd delay time
 
-class DelayProcessor final : public InsertProcessor
+class DelayProcessor final : public BandProcessor
 {
 public:
     //Constructor with ID
@@ -88,14 +88,17 @@ private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
-    NotifiableAudioParameterFloat* delayTimeParam = nullptr;
+    NotifiableAudioParameterFloat* timeParam = nullptr;
 
     SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
     SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
+
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
     
     int idNumber = 1;
     
     FractionalDelay delayUnit;
+    float sampleRate = 44100.f;
 };
 
 }

@@ -35,12 +35,16 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterBool* fxOnParam = nullptr;
-
+    
+    DigitalFilter hpf;
+    
     int idNumber = 1;
 
     FractionalDelay delayUnit;
     double sampleRate = 44100.0;
     float z[2] = {0.f};
+    
+    float wetSmooth[2] = {0.0};
 };
 
 }

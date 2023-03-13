@@ -154,7 +154,6 @@ void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mi
             buffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
         }
         
-        //for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
     }
 }

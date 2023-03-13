@@ -74,6 +74,7 @@ void PingPongProcessor::prepareToPlay (double sampleRate, int bufferSize)
     delayLeft.setFs (Fs);
     delayRight.setFs (Fs);
     
+    delayTime.reset (Fs, 0.5f);
     float samplesOfDelay = timeParam->get()/1000.f * static_cast<float> (sampleRate);
     delayLeft.setDelaySamples (samplesOfDelay);
     delayRight.setDelaySamples (samplesOfDelay);
@@ -101,22 +102,28 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
     
     for (int n = 0; n < numSamples ; ++n)
     {
+        float samplesOfDelay = delayTime.getNextValue();
+        delayLeft.setDelaySamples (samplesOfDelay);
+        delayRight.setDelaySamples (samplesOfDelay);
+        
         float xL = multibandBuffer.getWritePointer(0) [n];
         float xR = multibandBuffer.getWritePointer(1) [n];
 
-        float xSum = xL + xR;
+        float xSum = 0.7071f * (xL + xR);
         
         float dL = delayLeft.processSample (xSum + feedback * z,0);
         z = delayRight.processSample (dL,0);
 
         wetSmooth = 0.999f * wetSmooth + 0.001f * wet;
         
-        multibandBuffer.getWritePointer(0) [n] = dL;
-        multibandBuffer.getWritePointer(1) [n] = z;
-    }
+        multibandBuffer.getWritePointer(0) [n] = wetSmooth * dL;
+        multibandBuffer.getWritePointer(1) [n] = wetSmooth * z;
         
-    multibandBuffer.applyGain (wet);
-    //buffer.applyGain (1.f-wet);
+        float drySmooth = 1.f - wetSmooth;
+        buffer.getWritePointer (0)[n] *= (drySmooth);
+        buffer.getWritePointer (1)[n] *= (drySmooth);
+
+    }
     
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
@@ -150,8 +157,8 @@ void PingPongProcessor::parameterValueChanged (int paramIndex, float value)
         case (3):
         {
             float samplesOfDelay = value/1000.f * Fs;
-            delayLeft.setDelaySamples (samplesOfDelay);
-            delayRight.setDelaySamples (samplesOfDelay);
+            delayTime.setTargetValue (samplesOfDelay);
+            
             break;
         }
     }

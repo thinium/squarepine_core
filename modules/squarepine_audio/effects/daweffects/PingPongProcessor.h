@@ -34,6 +34,8 @@ private:
 
     int idNumber = 1;
 
+    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
+    
     FractionalDelay delayLeft;
     FractionalDelay delayRight;
     

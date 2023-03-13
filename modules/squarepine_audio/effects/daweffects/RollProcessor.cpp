@@ -109,11 +109,16 @@ void RollProcessor::processAudioBlock (juce::AudioBuffer<float> & buffer, MidiBu
     
     fillMultibandBuffer (tempBuffer);
 
-    multibandBuffer.applyGain (wet);
-    buffer.applyGain (dry);
-    
-    for (int c = 0; c < numChannels; ++c)
+    for (int c = 0; c < numChannels ; ++c)
+    {
+        for (int n = 0; n < numSamples ; ++n)
+        {
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            multibandBuffer.getWritePointer (c)[n] *= wetSmooth[c];
+            buffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
+        }
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+    }
 }
 
 const String RollProcessor::getName() const { return TRANS ("Roll"); }

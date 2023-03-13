@@ -88,8 +88,8 @@ void EchoProcessor::prepareToPlay (double Fs, int bufferSize)
     const ScopedLock lock (getCallbackLock());
 
     delayUnit.setFs ((float) Fs);
-    wetDry.reset (Fs, 0.001f);
-    delayTime.reset (Fs, 0.001f);
+    wetDry.reset (Fs, 0.5f);
+    delayTime.reset (Fs, 0.5f);
     setRateAndBufferSizeDetails (Fs, bufferSize);
     
     sampleRate = Fs;
@@ -119,18 +119,17 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     for (int s = 0; s < numSamples; ++s)
     {
         wet = wetDry.getNextValue();
-        //dry = 1.f - wet;
+        delayUnit.setDelaySamples (delayTime.getNextValue());
         for (int c = 0; c < numChannels; ++c)
         {
             x = multibandBuffer.getWritePointer (c)[s];
             y = (z[c] * feedbackAmp) + x;
             z[c] = delayUnit.processSample (y, c);
-            multibandBuffer.getWritePointer (c)[s] = y;
+            multibandBuffer.getWritePointer (c)[s] = wet * y;
+            buffer.getWritePointer (c)[s] *= (1.f - wet);
         }
     }
     
-    multibandBuffer.applyGain (wet);
-
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
 }
@@ -163,7 +162,7 @@ void EchoProcessor::parameterValueChanged (int paramIndex, float value)
         case (3):
         {
             float samplesOfDelay = value/1000.f * static_cast<float> (sampleRate);
-            delayUnit.setDelaySamples (samplesOfDelay);
+            delayTime.setTargetValue (samplesOfDelay);
             break;
         }
     }

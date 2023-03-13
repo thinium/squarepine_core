@@ -38,6 +38,17 @@ SpiralProcessor::SpiralProcessor (int idNum)
                                                                      ;
                                                                  });
 
+//    NormalisableRange<float> feedbackRange = { 0.f, 1.0f };
+//    auto feedback = std::make_unique<NotifiableAudioParameterFloat> ("feedback", "Feedback", feedbackRange, 0.5f,
+//                                                                     true,// isAutomatable
+//                                                                     "Feedback ",
+//                                                                     AudioProcessorParameter::genericParameter,
+//                                                                     [] (float value, int) -> String {
+//                                                                         int percentage = roundToInt (value * 100);
+//                                                                         String txt (percentage);
+//                                                                         return txt << "%";
+//                                                                     });
+    
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
@@ -47,10 +58,14 @@ SpiralProcessor::SpiralProcessor (int idNum)
     timeParam = time.get();
     timeParam->addListener (this);
 
+    //    feedbackParam = feedback.get();
+    //    feedbackParam->addListener (this);
+    
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (time));
+    //layout.add (std::move (feedback));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
@@ -59,6 +74,11 @@ SpiralProcessor::SpiralProcessor (int idNum)
     
     delayUnit.setDelaySamples (200 * 48);
     
+    hpf.setFilterType (DigitalFilter::FilterType::LSHELF);
+    hpf.setFreq (2000.0);
+    hpf.setQ (0.3);
+    hpf.setAmpdB(-3.0);
+    
 }
 
 SpiralProcessor::~SpiralProcessor()
@@ -66,6 +86,7 @@ SpiralProcessor::~SpiralProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     timeParam->removeListener (this);
+    // feedbackParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
@@ -84,7 +105,6 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     
     float wet;
     float dry;
-    float feedbackAmp = 0.4f;
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
@@ -94,7 +114,6 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         float delayMS = timeParam->get();
         float samplesOfDelay = delayMS/1000.f * static_cast<float> (sampleRate);
         delayUnit.setDelaySamples (samplesOfDelay);
-        //feedbackAmp = feedbackParam->get();
     }
     
     if (bypass)
@@ -102,24 +121,27 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     
     fillMultibandBuffer (buffer);
     
+    float feedbackAmp = 0.4f;
+    float inputAmp = 0.f;
     for (int c = 0; c < numChannels; ++c)
     {
         for (int s = 0; s < numSamples; ++s)
         {
-        
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            feedbackAmp = jmax (0.4f, wetSmooth[c]);
+            inputAmp = 1.f - wetSmooth[c];
             float x = multibandBuffer.getWritePointer (c)[s];
-            float y = (z[c] * feedbackAmp) + x;
+            float y = (z[c] * feedbackAmp) + inputAmp * x;
             float w = delayUnit.processSample (y, c);
-            z[c] = (2.f/static_cast<float>(M_PI)) * std::atan(w * 3.f);
-            multibandBuffer.getWritePointer (c)[s] = y;
+            w = hpf.processSample (w,c);
+            z[c] = (2.f/static_cast<float> (M_PI)) * std::atan(w * 2.f);
+            
+            multibandBuffer.getWritePointer(c) [s] = wetSmooth[c] * y;
+            buffer.getWritePointer (c)[s] *= inputAmp;
         }
-    }
-    
-    multibandBuffer.applyGain (wet);
-    buffer.applyGain (dry);
-    
-    for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+    }
+        
 }
 
 const String SpiralProcessor::getName() const { return TRANS ("Spiral"); }

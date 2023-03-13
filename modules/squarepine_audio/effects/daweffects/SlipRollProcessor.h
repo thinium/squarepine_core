@@ -39,6 +39,8 @@ private:
   
     AudioBuffer<float> tempBuffer; // used to multiband processing
     void fillTempBuffer ();
+    
+    float wetSmooth[2] = {0.0};
 };
 
 }

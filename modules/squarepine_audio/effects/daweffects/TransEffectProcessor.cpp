@@ -110,24 +110,15 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
             
             ampSmooth[c] = 0.95f * ampSmooth[c] + 0.05f * amp;
             
-            float offset = 1.f - ampSmooth[c];
-            float combinedAmp = static_cast<float> (depthSmooth[c] * ampSmooth[c] + offset);
-            
-            float wetSample = x * combinedAmp;
-            
-            //float y = (1.f - wetSmooth[c]) * x + wetSmooth[c] * wetSample;
-            float y = wetSample;
+            float y = x * ampSmooth[c];
             
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            multibandBuffer.getWritePointer(c) [n] = y;
+            multibandBuffer.getWritePointer(c) [n] = wetSmooth[c] * y;
+            buffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
         }
-    }
-    
-    multibandBuffer.applyGain (wet);
-    buffer.applyGain (dry);
-    
-    for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+    }
+        
 }
 
 const String TransEffectProcessor::getName() const { return TRANS ("Trans"); }

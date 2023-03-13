@@ -70,6 +70,11 @@ ReverbProcessor::ReverbProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+    
+    hpf.setFilterType (DigitalFilter::FilterType::HPF);
+    hpf.setFreq (40.f);
+    lpf.setFilterType (DigitalFilter::FilterType::LPF);
+    lpf.setFreq (10000.f);
 }
 
 ReverbProcessor::~ReverbProcessor()
@@ -87,8 +92,10 @@ void ReverbProcessor::prepareToPlay (double Fs, int bufferSize)
     BandProcessor::prepareToPlay (Fs, bufferSize);
     reverb.reset();
     reverb.setSampleRate (Fs);
+    hpf.setFs (Fs);
+    lpf.setFs (Fs);
 }
-void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
+void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
@@ -124,6 +131,9 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
             break;
     }
     
+    lpf.processBuffer (multibandBuffer, midi);
+    hpf.processBuffer (multibandBuffer, midi);
+    
     multibandBuffer.applyGain (wet);
     buffer.applyGain (dry);
     
@@ -145,6 +155,23 @@ void ReverbProcessor::parameterValueChanged (int id, float value)
     {
         setBypass (value > 0);
     }
+    if (id == 4) // filterParam
+    {
+        if (value > 0.5f)
+        {
+            float normValue = 2.f * (value - 0.5f);
+            float freqHz = 4.f * std::powf(10.f, 2.f * normValue + 1.f); // 40 - 4000
+            hpf.setFreq (freqHz);
+            lpf.setFreq (10000.f);
+        }
+        else
+        {
+            float normValue = value * 2.f;
+            float freqHz = std::powf(10.f,normValue + 3.f) ; // 10000 -> 2000
+            lpf.setFreq (freqHz);
+            hpf.setFreq (40.f);
+        }
+    }
     //Subtract the number of new parameters in this processor
     BandProcessor::parameterValueChanged (id, value);
 }
@@ -159,7 +186,7 @@ void ReverbProcessor::updateReverbParams()
     Reverb::Parameters localParams;
 
     localParams.roomSize = timeParam->get();
-    localParams.damping = 1 - filterParam->get();
+    localParams.damping = 1.f; // - filterParam->get();
     localParams.wetLevel = 1.f; //wetDryParam->get();
     localParams.dryLevel = 0.f; //1 - wetDryParam->get();
     localParams.width = 1;

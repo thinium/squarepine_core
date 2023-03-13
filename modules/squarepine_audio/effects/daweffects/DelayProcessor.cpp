@@ -127,7 +127,7 @@ void FractionalDelay::setFs (float _Fs)
 
 void FractionalDelay::setDelaySamples (float _delay)
 {
-    if (delay >= 1.f)
+    if (_delay >= 1.f)
     {
         delay = _delay;
     }
@@ -148,9 +148,7 @@ void FractionalDelay::clearDelay()
     }
 }
 
-DelayProcessor::DelayProcessor (int idNum)
-    : InsertProcessor (true),
-      idNumber (idNum)
+DelayProcessor::DelayProcessor (int idNum): idNumber (idNum)
 {
     reset();
 
@@ -166,6 +164,13 @@ DelayProcessor::DelayProcessor (int idNum)
                                                                        return txt << "%";
                                                                    });
 
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String {
+        if (value > 0)
+            return TRANS ("On");
+        return TRANS ("Off");
+        ;
+    });
+    
     NormalisableRange<float> timeRange = { 1.f, 4000.0f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("delayTime", "Delay Time", timeRange, 200.f,
                                                                  true,// isAutomatable
@@ -183,29 +188,20 @@ DelayProcessor::DelayProcessor (int idNum)
     delayTime.setTargetValue (200 * 48);
 
     wetDryParam = wetdry.get();
+    wetDryParam->addListener (this);
 
-    delayTimeParam = time.get();
-    delayTimeParam->addListener (this);
+    fxOnParam = fxon.get();
+    fxOnParam->addListener (this);
 
+    timeParam = time.get();
+    timeParam->addListener (this);
+    
     auto layout = createDefaultParameterLayout (false);
-    setupDefaultParametersAndCallbacks (layout);
-
+    layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    addParameterWithCallback (wetDryParam, [&] (float& value)
-                              {
-                                  wetDry.setTargetValue (jlimit (0.f, 1.f, value));
-                              });
-
     layout.add (std::move (time));
-    addParameterWithCallback (delayTimeParam, [&] (float& value)
-                              {//delay time
-                                  auto range = delayTimeParam->getNormalisableRange().getRange();
-                                  auto valMS = (float) jlimit ((int) range.getStart(), (int) range.getEnd(), roundToInt (value));
-                                  auto t = (getSampleRate() / 1000) * valMS;
-                                  delayTime.setTargetValue ((float) t);
-                              });
 
-
+    setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
@@ -215,19 +211,22 @@ DelayProcessor::DelayProcessor (int idNum)
 DelayProcessor::~DelayProcessor()
 {
     wetDryParam->removeListener (this);
-    delayTimeParam->removeListener (this);
+    fxOnParam->removeListener (this);
+    timeParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
 void DelayProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     const ScopedLock lock (getCallbackLock());
-    InsertProcessor::prepareToPlay (Fs, bufferSize);
+    BandProcessor::prepareToPlay (Fs, bufferSize);
 
     delayUnit.setFs ((float) Fs);
-    wetDry.reset (Fs, 0.001f);
-    delayTime.reset (Fs, 0.001f);
+    wetDry.reset (Fs, 0.5f);
+    delayTime.reset (Fs, 0.5f);
     setRateAndBufferSizeDetails (Fs, bufferSize);
+    
+    sampleRate = static_cast<float> (Fs);
 }
 void DelayProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -235,16 +234,20 @@ void DelayProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-//    const ScopedLock sl (getCallbackLock());
-//    bool bypass;
-//    {
-//        bypass = !fxOnParam->get();
-//    }
-//    
-//    if (bypass)
-//        return;
-
-    float dry, wet, x, y, z;
+    
+    bool bypass;
+    {
+        const ScopedLock lock (getCallbackLock());
+        bypass = !fxOnParam->get();
+        //feedbackAmp = feedbackParam->get(); // appears to be constant from hardware demo
+    }
+    
+    if (bypass)
+        return;
+    
+    fillMultibandBuffer (buffer);
+    
+    float dry, wet, x, y;
     for (int s = 0; s < numSamples; ++s)
     {
         delayUnit.setDelaySamples (delayTime.getNextValue());
@@ -252,12 +255,15 @@ void DelayProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
         dry = 1.f - wet;
         for (int c = 0; c < numChannels; ++c)
         {
-            x = buffer.getWritePointer (c)[s];
-            z = delayUnit.processSample (x, c);
-            y = (z * wet) + (x * dry);
-            buffer.getWritePointer (c)[s] = y;
+            x = multibandBuffer.getWritePointer (c)[s];
+            y = delayUnit.processSample (x, c);
+            multibandBuffer.getWritePointer (c)[s] = wet * y;
+            buffer.getWritePointer (c)[s] *= dry;
         }
     }
+    
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
 }
 //============================================================================== House keeping
 const String DelayProcessor::getName() const { return TRANS ("Delay"); }
@@ -266,11 +272,33 @@ Identifier DelayProcessor::getIdentifier() const { return "Delay" + String (idNu
 /** @internal */
 bool DelayProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void DelayProcessor::parameterValueChanged (int paramNum, float value)
+void DelayProcessor::parameterValueChanged (int paramIndex, float value)
 {
     const ScopedLock sl (getCallbackLock());
 
-    InsertProcessor::parameterValueChanged (paramNum, value);
+    BandProcessor::parameterValueChanged (paramIndex, value);
+    
+    switch (paramIndex)
+    {
+        case (1):
+        {
+            // fx on/off (handled in processBlock)
+            break;
+        }
+        case (2):
+        {
+            wetDry.setTargetValue (value);
+            //
+            break;
+        }
+        case (3):
+        {
+            float samplesOfDelay = (value/1000.f) * sampleRate;
+            delayTime.setTargetValue(samplesOfDelay);
+            break;
+        }
+    }
+    
 }
 void DelayProcessor::releaseResources()
 {

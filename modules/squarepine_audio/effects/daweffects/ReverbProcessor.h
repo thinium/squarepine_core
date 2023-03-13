@@ -38,6 +38,8 @@ private:
     void updateReverbParams();
 
     int idNumber = 1;
+    DigitalFilter hpf;
+    DigitalFilter lpf;
 };
 
 }
