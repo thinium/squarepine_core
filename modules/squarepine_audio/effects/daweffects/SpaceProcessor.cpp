@@ -30,9 +30,6 @@ SpaceProcessor::SpaceProcessor (int idNum)
                                                                          true,// isAutomatable
                                                                          "Colour ",
                                                                          AudioProcessorParameter::genericParameter,
-                                                                         [] (float value, int) -> String
-                                                                         {
-                                                                             String txt (value);
                                                                              return txt;
                                                                              ;
                                                                          });

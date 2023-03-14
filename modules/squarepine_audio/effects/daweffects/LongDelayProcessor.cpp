@@ -7,7 +7,7 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
     reset();
 
     NormalisableRange<float> wetDryRange = { 0.f, 1.f };
-    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 1.f,
+    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 0.5f,
                                                                    true,// isAutomatable
                                                                    "Dry/Wet",
                                                                    AudioProcessorParameter::genericParameter,
@@ -37,17 +37,6 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
                                                                      return txt << "ms";
                                                                      ;
                                                                  });
-    NormalisableRange<float> colourRange = { -1.f, 1.0f };
-    auto colour = std::make_unique<NotifiableAudioParameterFloat> ("colour", "Colour/Tone", colourRange, 0.f,
-                                                                   true,// isAutomatable
-                                                                   "Colour ",
-                                                                   AudioProcessorParameter::genericParameter,
-                                                                   [] (float value, int) -> String
-                                                                   {
-                                                                       String txt (value);
-                                                                       return txt;
-                                                                       ;
-                                                                   });
 
     NormalisableRange<float> feedbackRange = { 0.f, 1.0f };
     auto feedback = std::make_unique<NotifiableAudioParameterFloat> ("feedback", "Feedback", feedbackRange, 0.5f,
@@ -67,8 +56,8 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    colourParam = colour.get();
-    colourParam->addListener (this);
+//    colourParam = colour.get();
+//    colourParam->addListener (this);
 
     feedbackParam = feedback.get();
     feedbackParam->addListener (this);
@@ -79,13 +68,14 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (colour));
-    layout.add (std::move (feedback));
+    //layout.add (std::move (colour));
     layout.add (std::move (time));
+    layout.add (std::move (feedback));
+    
     appendExtraParams (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
-    setPrimaryParameter (colourParam);
+    setPrimaryParameter (wetDryParam);
     
     delayTime.setTargetValue (timeParam->get());
     wetDry.setTargetValue (wetDryParam->get());
@@ -95,7 +85,7 @@ LongDelayProcessor::~LongDelayProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    colourParam->removeListener (this);
+    //colourParam->removeListener (this);
     feedbackParam->removeListener (this);
     timeParam->removeListener (this);
 }
@@ -105,8 +95,8 @@ void LongDelayProcessor::prepareToPlay (double sampleRate, int)
 {
     Fs = static_cast<float> (sampleRate);
     delayUnit.setFs (Fs);
-    wetDry.reset (Fs, 0.001f);
-    delayTime.reset (Fs, 0.001f);
+    wetDry.reset (Fs, 0.5f);
+    delayTime.reset (Fs, 0.5f);
     delayUnit.setDelaySamples (delayTime.getNextValue()/1000.f * Fs);
 }
 void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
@@ -120,6 +110,10 @@ void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuf
         const ScopedLock sl (getCallbackLock());
         bypass = !fxOnParam->get();
         feedback = feedbackParam->get() * 0.75f; // max feedback gain is 0.75
+        float timeMS = timeParam->get();
+        float samplesOfDelay = timeMS/1000.f * Fs;
+        delayTime.setTargetValue (samplesOfDelay);
+        delayUnit.setDelaySamples (delayTime.getNextValue());
     }
     
     if (bypass)
@@ -127,8 +121,7 @@ void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     
     float dry, wet, x, y;
     
-    float samplesOfDelay = delayTime.getNextValue()/1000.f * Fs;
-    delayUnit.setDelaySamples (samplesOfDelay);
+    
     
     for (int s = 0; s < numSamples; ++s)
     {
@@ -169,20 +162,16 @@ void LongDelayProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-        
+            
+            float samplesOfDelay = value/1000.f * Fs;
+            delayTime.setTargetValue (samplesOfDelay);
+            delayUnit.setDelaySamples (samplesOfDelay);
+            
             break;
         }
         case (4):
         {
             
-            
-            break;
-        }
-        case (5):
-        {
-            delayTime.setTargetValue (value);
-            float samplesOfDelay = delayTime.getNextValue()/1000.f * Fs;
-            delayUnit.setDelaySamples (samplesOfDelay);
             break;
         }
     }

@@ -134,6 +134,7 @@ void PitchProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
             
             effectBuffer.getWritePointer(c) [index] = y;
+            buffer.getWritePointer(c) [index] = (1.f - wetSmooth[c]);
             
             ++index;
         }
@@ -180,27 +181,9 @@ void PitchProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-        
-            break;
-        }
-        case (4):
-        {
-            //float samplesOfDelay = value/1000.f * static_cast<float> (sampleRate);
-            if (value > 0.f)
-            {
-                float pitchFactor = 2.f * value/100.f;
-                elastique->SetStretchPitchQFactor (1.f, pitchFactor, useElastiquePro);
-            }
-            else
-            {
-                float pitchFactor = -value/100.f;
-                elastique->SetStretchPitchQFactor (1.f, pitchFactor, useElastiquePro);
-            }
-            break;
-        }
-        case (5):
-        {
-            
+            float pitchFactor = 1.f + value/100.f;
+            elastique->SetStretchPitchQFactor (1.f, pitchFactor, useElastiquePro);
+
             break;
         }
     }
