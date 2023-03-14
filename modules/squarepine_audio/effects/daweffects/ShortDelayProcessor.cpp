@@ -7,7 +7,7 @@ ShortDelayProcessor::ShortDelayProcessor (int idNum): idNumber (idNum)
     reset();
     
     NormalisableRange<float> wetDryRange = { 0.f, 1.f };
-    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 1.f,
+    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 0.5f,
                                                                    true,// isAutomatable
                                                                    "Dry/Wet",
                                                                    AudioProcessorParameter::genericParameter,
@@ -68,7 +68,7 @@ ShortDelayProcessor::ShortDelayProcessor (int idNum): idNumber (idNum)
     appendExtraParams(layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
-    setPrimaryParameter (colourParam);
+    setPrimaryParameter (wetDryParam);
     
     delayTime.setTargetValue (timeParam->get());
     wetDry.setTargetValue (0.5);
