@@ -70,13 +70,13 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
 
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
-    layout.add (std::move (wetdry));
-    layout.add (std::move (time));
     layout.add (std::move (speed));
+    layout.add (std::move (time));
+    layout.add (std::move (wetdry));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
-    setPrimaryParameter (wetDryParam);
+    setPrimaryParameter (speedParam);
 }
 
 VinylBreakProcessor::~VinylBreakProcessor()
