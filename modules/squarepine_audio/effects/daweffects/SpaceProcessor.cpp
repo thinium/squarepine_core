@@ -34,7 +34,6 @@ SpaceProcessor::SpaceProcessor (int idNum)
                                                                              ;
                                                                          });
 
-
     NormalisableRange<float> otherRange = { 0.f, 1.0f };
     auto other = std::make_unique<NotifiableAudioParameterFloat> ("length", "Length", otherRange, 0.5f,
                                                                   true,// isAutomatable
@@ -58,15 +57,11 @@ SpaceProcessor::SpaceProcessor (int idNum)
     otherParam = other.get();
     otherParam->addListener (this);
 
-    //timeParam = time.get();
-    //timeParam->addListener (this);
-
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (reverbColour));
     layout.add (std::move (other));
-    //layout.add (std::move (time));
     appendExtraParams (layout);
 
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
@@ -80,7 +75,6 @@ SpaceProcessor::~SpaceProcessor()
     fxOnParam->removeListener (this);
     reverbColourParam->removeListener (this);
     otherParam->removeListener (this);
-    //timeParam->removeListener (this);
 }
 
 //============================================================================== Audio processing

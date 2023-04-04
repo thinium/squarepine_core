@@ -11,8 +11,9 @@ namespace djdawprocessor
 /// many of the FX are parallel effects where the multi-band processing is only on the effected
 /// signal. The TRANS effect is one where only the effected/wet signal is output when the extra
 /// parameter is at the max. I used this to analyze the low/mid/high. It appears to use Linkwitz-Riley
-/// filters with cut-offs at 300 Hz and 5 kHz. A recording of this was captured. 
-
+/// filters with cut-offs at 300 Hz and 5 kHz. A recording of this was captured.
+namespace djdawprocessor
+{
 
 class TransEffectProcessor final : public BandProcessor
 {

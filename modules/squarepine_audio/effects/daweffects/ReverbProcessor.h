@@ -5,6 +5,8 @@ namespace djdawprocessor
 /// TODO: wet/dry is true blend (increase + decrease)
 /// Time is listed as percentage, 50% default.
 /// Reverb sounds fairly bright (X-pad adds LPF for low settings and HPF for high settings)
+namespace djdawprocessor
+{
 
 class ReverbProcessor final : public BandProcessor
 {
@@ -40,6 +42,8 @@ private:
     int idNumber = 1;
     DigitalFilter hpf;
     DigitalFilter lpf;
+    int idNumber = 1;
+
 };
 
 }

@@ -50,7 +50,8 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
                                                                   true,// isAutomatable
                                                                   "Speed ",
                                                                   AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String {
+                                                                  [] (float value, int) -> String
+                                                                  {
                                                                       int percentage = roundToInt (value * 100);
                                                                       String txt (percentage);
                                                                       return txt << "%";

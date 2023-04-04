@@ -26,6 +26,7 @@ public:
 protected:
     AudioBuffer<float> multibandBuffer;
     
+    virtual void parameterValueChanged (int paramNum, float value) override;
 private:
     AudioParameterBool *lowFrequencyToggleParam, *midFrequencyToggleParam, *highFrequencyToggleParam;
     

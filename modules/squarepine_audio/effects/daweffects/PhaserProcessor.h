@@ -32,6 +32,8 @@ namespace djdawprocessor
 
 // Rev roll - identical to "roll" except audio is played back from the end of the buffer in reverse, same audio stays in buffer entire time
 /// X-PAD control is delay time
+namespace djdawprocessor
+{
 
 class PhaserProcessor final : public BandProcessor
 {

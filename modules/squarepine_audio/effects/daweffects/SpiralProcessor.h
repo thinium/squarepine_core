@@ -10,6 +10,8 @@ namespace djdawprocessor
 /// Delay length (min/max range) is sync'd to tempo
 // X-PAD seems to have some pitch shifting effect, but maybe this is just happening because the delay speeding up
 // or slowing down continuously (see sound recording)
+namespace djdawprocessor
+{
 
 class SpiralProcessor final : public BandProcessor
 {

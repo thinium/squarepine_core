@@ -92,7 +92,6 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         bypass = !fxOnParam->get();
-        //feedback = feedbackParam->get();
     }
     
     if (bypass)

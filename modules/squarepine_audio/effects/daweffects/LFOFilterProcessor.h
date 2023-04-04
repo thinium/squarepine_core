@@ -7,6 +7,8 @@ namespace djdawprocessor
 // frequency sweeps across the spectrum at a relatively slow rate (2000 ms), there is another LFO that
 // causes the frequency to warble a few Hz above and below the primary. This happens relatively quickly.
 // When X-pad is at maximum (default), there is no warble. As the value goes down, the warble increases.
+namespace djdawprocessor
+{
 
 class LFOFilterProcessor final : public BandProcessor
 {

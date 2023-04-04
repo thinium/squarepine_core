@@ -1,7 +1,6 @@
 namespace djdawprocessor
 {
 
-
 float ModulatedDelay::processSample (float x, int channel)
 {
     if (delay < 1.f)
@@ -205,7 +204,6 @@ DelayProcessor::DelayProcessor (int idNum): idNumber (idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
-    
 }
 
 DelayProcessor::~DelayProcessor()

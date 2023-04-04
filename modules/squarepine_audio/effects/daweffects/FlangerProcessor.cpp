@@ -32,7 +32,8 @@ FlangerProcessor::FlangerProcessor (int idNum)
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
-                                                                 [] (float value, int) -> String {
+                                                                 [] (float value, int) -> String
+                                                                 {
                                                                      String txt (roundToInt (value));
                                                                      return txt << "ms";
                                                                      ;

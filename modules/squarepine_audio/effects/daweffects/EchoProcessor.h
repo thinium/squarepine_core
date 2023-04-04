@@ -1,7 +1,8 @@
+
 namespace djdawprocessor
 {
 
-/// TODO: Feedback seems to be constant and long, need to measure with IR to watch rate of reduction
+/// Feedback seems to be constant and long, need to measure with IR to watch rate of reduction
 /// Level parameter is wet/dry control. Dry signal is constant amplitude, wet signal is blended in by parameter
 /// Delay length (min/max range) is sync'd to tempo
 /// XPad is sync'd delay time

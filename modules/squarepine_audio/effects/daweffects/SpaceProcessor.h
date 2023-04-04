@@ -8,6 +8,8 @@ namespace djdawprocessor
 /// Turning left or right sounds like a wet/dry blend. 50/50 at max settings left or right.
 /// Completely dry in center
 /// Extra parameter controls the reverb time from a short room to something super long (10-15 secs)
+namespace djdawprocessor
+{
 
 class SpaceProcessor final : public V10SendProcessor
 {

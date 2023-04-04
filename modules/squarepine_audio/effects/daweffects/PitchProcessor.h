@@ -6,6 +6,8 @@ namespace djdawprocessor
 /// actually changed. When at 50%, multiplier = 1. When at a maximum, multiplier is 2.
 /// Therefore, up 1 octave can actually be stetched to 2 octaves. And down an octave, can
 /// actually be stretched down to -100% or no pitch (signal disappears)
+namespace djdawprocessor
+{
 
 class PitchProcessor final : public BandProcessor
 {

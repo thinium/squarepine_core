@@ -39,7 +39,6 @@ NoiseProcessor::NoiseProcessor (int idNum)
                                                                        return txt;
                                                                        ;
                                                                    });
-
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 

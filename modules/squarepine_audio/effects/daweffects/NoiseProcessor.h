@@ -9,6 +9,8 @@ namespace djdawprocessor
 /// Filter color effect is similar to the noise processor (class needs to be added)
 /// Filter appears to be a LPF and HPF, not a BPF. 2nd-order roll-off and same frequency range
 /// Extra parameter is Q. Minimum appears to be 0.5 (definitely less than 0.7071) and max is Q=5
+namespace djdawprocessor
+{
 
 class NoiseProcessor final : public InternalProcessor,
 public AudioProcessorParameter::Listener

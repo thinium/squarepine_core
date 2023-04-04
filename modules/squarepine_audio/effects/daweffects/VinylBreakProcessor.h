@@ -52,7 +52,6 @@ private:
     
     AudioBuffer<float> inputBuffer;
     AudioBuffer<float> outputBuffer;
-  
 };
 
 }
