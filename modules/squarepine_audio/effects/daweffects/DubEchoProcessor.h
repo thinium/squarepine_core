@@ -1,8 +1,6 @@
 
 namespace djdawprocessor
 {
-
-
 /// TODO: there seems to be subtle modulation of the delay.
 /// Extra parameter does several things. It controls feedback amount.
 /// It seems like when this parameter is less than 50%, it is increasing the

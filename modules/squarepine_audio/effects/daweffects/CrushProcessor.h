@@ -57,7 +57,6 @@ private:
     NotifiableAudioParameterFloat* otherParam = nullptr;
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
-    //bool isBypassed = false;
     int idNumber = 1;
 
     BitCrusherProcessor bitCrusher;

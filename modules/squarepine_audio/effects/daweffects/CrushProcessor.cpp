@@ -92,7 +92,6 @@ void CrushProcessor::prepareToPlay (double sampleRate, int bufferSize)
     highPassFilter.setFilterType (DigitalFilter::FilterType::HPF);
     highPassFilter.setFs (sampleRate);
     delayBlock.setFs (static_cast<float> (sampleRate));
-    
     dryBuffer = AudioBuffer<float> (2, bufferSize);
 }
 void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
@@ -175,4 +174,3 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
 }
 
 }
-
