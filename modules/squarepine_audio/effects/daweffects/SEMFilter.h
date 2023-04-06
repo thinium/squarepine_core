@@ -1,6 +1,6 @@
 
 // This model is based on the Virtual Analog analysis
-// by Will Pirkle: https://github.com/ddiakopoulos/MoogLadders/blob/master/src/OberheimVariationModel.h
+// by Will Pirkle in Ch 7 of Designing Synthesizer Software textbook
 
 namespace djdawprocessor
 {
@@ -37,35 +37,23 @@ public:
         }
     }
 
-    float processSample (float in, int channel)
+    float processSample (float x, int channel)
     {
         resSmooth.getNextValue();
         normFreqSmooth.getNextValue();
         // Filter Prep
-        float sigma = s1[channel] * beta1 + s2[channel] * beta2 + s3[channel] * beta3 + s4[channel] * beta4;
+        float yhp = (x - rho * s1[channel] - s2[channel]) * alpha0;
 
-        float u = in * (1.f + K);
-        u = (u - sigma * (K)) * alpha0;
-        u = std::tanh (1.2f * u);
-
-        // LPF1
-        float x1 = alpha * (u - s1[channel]);
+        float x1 = alpha1 * yhp;
         float y1 = s1[channel] + x1;
-        s1[channel] = x1 + y1;
+        float ybp = std::tanh (1.f * y1);
+        s1[channel] = x1 + ybp;
 
-        float x2 = alpha * (y1 - s2[channel]);
-        float y2 = s2[channel] + x2;
-        s2[channel] = x2 + y2;
+        float x2 = alpha1 * ybp;
+        float ylp = s2[channel] + x2;
+        s2[channel] = x2 + ylp;
 
-        float x3 = alpha * (y2 - s3[channel]);
-        float y3 = s3[channel] + x3;
-        s3[channel] = x3 + y3;
-
-        float x4 = alpha * (y3 - s4[channel]);
-        float y4 = s4[channel] + x4;
-        s4[channel] = x4 + y4;
-
-        return y4;
+        return ylp;
     }
 private:
     SmoothedValue<float, ValueSmoothingTypes::Linear> normFreqSmooth { 1.0f };
@@ -75,26 +63,20 @@ private:
     float targetRes = 0.1f;
 
     float sampleRate;
-    float K;// transformed bandwidth "Q"
+    float R;// transformed bandwidth "Q"
     float g;
     float G;
-    float gamma;
     float alpha;
     float alpha0;
-    float beta4;
-    float beta3;
-    float beta2;
-    float beta1;
+    float alpha1;
+    float rho;
     float s1[2] = { 0.0f };
     float s2[2] = { 0.0f };
-    float s3[2] = { 0.0f };
-    float s4[2] = { 0.0f };
 
     void updateCoefficients()
     {
-        K = resSmooth.getNextValue() / 3.9f;
+        R = 1.f/(2.f*resSmooth.getNextValue());
         float normFreq = normFreqSmooth.getNextValue();
-        K = K + 0.3f * normFreq;//scaling of K to keep resonance similar across spectrum
 
         float freqHz = 2.f * std::powf (10.f, 3.f * normFreq + 1.f);
         float wd = 2.f * (float) M_PI * freqHz;
@@ -102,13 +84,10 @@ private:
         float wa = (2.f / T) * std::tan (wd * T / 2.f);// Warping for BLT
         g = wa * T / 2.f;
         G = g / (1.f + g);
-        gamma = G * G * G * G;
         alpha = G;
-        alpha0 = 1.f / (1.f + K * gamma);
-        beta1 = (G * G * G) / (1.f + g);
-        beta2 = (G * G) / (1.f + g);
-        beta3 = (G) / (1.f + g);
-        beta4 = (1.f) / (1.f + g);
+        alpha0 = 1.f / (1.f + 2.f*R*g + g*g);
+        alpha1 = g;
+        rho = 2.f * R + g;
     }
 };
 
@@ -149,25 +128,21 @@ public:
         resSmooth.getNextValue();
         normFreqSmooth.getNextValue();
 
-        float x1 = alpha * (x - s1[channel]);
-        float x2 = x1 + s1[channel];
-        s1[channel] = x1 + x2;
-        float y1 = x - x2;
+        resSmooth.getNextValue();
+        normFreqSmooth.getNextValue();
+        // Filter Prep
+        float yhp = (x - rho * s1[channel] - s2[channel]) * alpha0;
 
-        float u = alpha0 * (y1 + s3[channel] * beta3 + s2[channel] * beta2);
-        float output = u;
-        float y = K * u;
-        u = std::tanh (1.5f * u);
+        float x1 = alpha1 * yhp;
+        float y1 = s1[channel] + x1;
+        float ybp = std::tanh (1.f * y1);
+        s1[channel] = x1 + ybp;
 
-        float x3 = alpha * (y - s2[channel]);
-        float x4 = x3 + s2[channel];
-        s2[channel] = x3 + x4;
+        float x2 = alpha1 * ybp;
+        float ylp = s2[channel] + x2;
+        s2[channel] = x2 + ylp;
 
-        float x5 = alpha * (y - x4 - s3[channel]);
-        float y3 = s3[channel] + x5;
-        s3[channel] = y3 + x5;
-
-        return output;
+        return ylp;
     }
 private:
     SmoothedValue<float, ValueSmoothingTypes::Linear> normFreqSmooth { 0.0f };
@@ -177,39 +152,31 @@ private:
     float targetRes = 0.1f;
 
     float sampleRate;
-    float K;// transformed bandwidth "Q"
+    float R;// transformed bandwidth "Q"
     float g;
     float G;
-    float gamma;
     float alpha;
     float alpha0;
-    //float beta4;
-    float beta3;
-    float beta2;
-    //float beta1;
+    float alpha1;
+    float rho;
     float s1[2] = { 0.0f };
     float s2[2] = { 0.0f };
-    float s3[2] = { 0.0f };
-    //float s4[2] = {0.0f};
 
     void updateCoefficients()
     {
-        // For HPF, K should have a range of 0.1 to 1 (max resonance)
-        K = (((resSmooth.getNextValue() - 0.1f) / 9.9f) * 0.9f) + 0.1f;
+        R = 1.f/(2.f*resSmooth.getNextValue());
+        float normFreq = normFreqSmooth.getNextValue();
 
-        float freqHz = 2.f * std::powf (10.f, 3.f * normFreqSmooth.getNextValue() + 1.f);
+        float freqHz = 2.f * std::powf (10.f, 3.f * normFreq + 1.f);
         float wd = 2.f * (float) M_PI * freqHz;
         float T = 1.f / sampleRate;
         float wa = (2.f / T) * std::tan (wd * T / 2.f);// Warping for BLT
         g = wa * T / 2.f;
         G = g / (1.f + g);
-        gamma = G * G * G * G;
         alpha = G;
-        alpha0 = 1.f / (1.f - K * G + K * G * G);
-        //beta1 = (G * G * G)/(1.f + g);
-        beta2 = (1.f) / (1.f + g);
-        beta3 = -G / (1.f + g);
-        //beta4 = (1.f)/(1.f + g);
+        alpha0 = 1.f / (1.f + 2.f*R*g + g*g);
+        alpha1 = g;
+        rho = 2.f * R + g;
     }
 };
 
@@ -582,10 +549,6 @@ public:
         mixHPF.reset (Fs, 0.001f);
         setRateAndBufferSizeDetails (Fs, bufferSize);
 
-        hpf2.setFs (Fs);
-        hpf2.setFreq (20.f);
-        hpf2.setQ (std::sqrt (2.f));
-        hpf2.setFilterType (DigitalFilter::FilterType::HPF);
     }
 
     //==============================================================================
@@ -603,9 +566,6 @@ public:
         {// Frequency change
             lpf.setNormFreq (jmin (1.f, value + 1.f));
             hpf.setNormFreq (jmax (0.0001f, value));
-
-            float freqHz = 2.f * std::powf (10.f, 3.f * jmax (0.0001f, value) + 1.f);
-            hpf2.setFreq (freqHz);
 
             if (value < 0.f)
             {
@@ -627,8 +587,6 @@ public:
         {// Resonance change
             lpf.setQValue (value);
             hpf.setQValue (value);
-
-            hpf2.setQ (value);
         }
     }
 
@@ -656,7 +614,7 @@ public:
                 y = (1.f - mix) * x + mix * lpf.processSample (x, c);
 
                 mix = mixHPF.getNextValue();
-                y = (1.f - mix) * y + mix * (float) hpf2.processSample (y, c);
+                y = (1.f - mix) * y + mix * (float) hpf.processSample (y, c);
                 buffer.getWritePointer (c)[s] = y;
             }
         }
@@ -710,7 +668,7 @@ private:
 
     SEMLowPassFilter lpf;
     SEMHighPassFilter hpf;
-    DigitalFilter hpf2;// Use for now. Swap out later for a better model of  the SEMHighPassFilter
+    
 };
 
 }
