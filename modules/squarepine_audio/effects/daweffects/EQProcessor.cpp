@@ -1,14 +1,18 @@
+namespace djdawprocessor
+{
+
 //==============================================================================
-class SimpleEQProcessor::InternalFilter final
+class EQProcessor::InternalFilter final
 {
 public:
     InternalFilter (FilterType filterType,
                     NotifiableAudioParameterFloat* g,
                     NotifiableAudioParameterFloat* c,
-                    NotifiableAudioParameterFloat* r): type (filterType),
-                                                       gain (g),
-                                                       cutoff (c),
-                                                       resonance (r)
+                    NotifiableAudioParameterFloat* r)
+        : type (filterType),
+          gain (g),
+          cutoff (c),
+          resonance (r)
     {
         updateCoefficients();
 
@@ -80,7 +84,6 @@ public:
     NotifiableAudioParameterFloat* resonance = nullptr;
 
     std::vector<NotifiableAudioParameterFloat*> parameters;
-
 private:
     void updateCoefficients()
     {
@@ -143,12 +146,13 @@ private:
 };
 
 //==============================================================================
-SimpleEQProcessor::SimpleEQProcessor(): InternalProcessor (false)
+EQProcessor::EQProcessor()
+    : InternalProcessor (false)
 {
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", createParameterLayout()));
 }
 
-SimpleEQProcessor::~SimpleEQProcessor()
+EQProcessor::~EQProcessor()
 {
     for (auto* f: filters)
     {
@@ -158,7 +162,7 @@ SimpleEQProcessor::~SimpleEQProcessor()
 }
 
 //==============================================================================
-void SimpleEQProcessor::prepareToPlay (const double newSampleRate, const int bufferSize)
+void EQProcessor::prepareToPlay (const double newSampleRate, const int bufferSize)
 {
     setRateAndBufferSizeDetails (newSampleRate, bufferSize);
 
@@ -170,11 +174,11 @@ void SimpleEQProcessor::prepareToPlay (const double newSampleRate, const int buf
         f->prepare (newSampleRate, bufferSize, numChans);
 }
 
-void SimpleEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) { process (buffer); }
-void SimpleEQProcessor::processBlock (juce::AudioBuffer<double>& buffer, MidiBuffer&) { process (buffer); }
+void EQProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) { process (buffer); }
+void EQProcessor::processBlock (juce::AudioBuffer<double>& buffer, MidiBuffer&) { process (buffer); }
 
 template<typename SampleType>
-void SimpleEQProcessor::process (juce::AudioBuffer<SampleType>& buffer)
+void EQProcessor::process (juce::AudioBuffer<SampleType>& buffer)
 {
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
@@ -191,7 +195,7 @@ void SimpleEQProcessor::process (juce::AudioBuffer<SampleType>& buffer)
 }
 
 //==============================================================================
-AudioProcessorValueTreeState::ParameterLayout SimpleEQProcessor::createParameterLayout()
+AudioProcessorValueTreeState::ParameterLayout EQProcessor::createParameterLayout()
 {
     struct Config final
     {
@@ -201,16 +205,17 @@ AudioProcessorValueTreeState::ParameterLayout SimpleEQProcessor::createParameter
     };
 
     const Config configs[] = {
-        { NEEDS_TRANS ("HighShelf"), FilterType::highpass, HIGHFREQCUTOFF },
-        { NEEDS_TRANS ("High Mid Peak/Bell"), FilterType::bandpass, HIGHMIDFREQPEAK },
-        { NEEDS_TRANS ("Peak/Bell"), FilterType::bandpass, MIDFREQPEAK },
-        { NEEDS_TRANS ("LowShelf"), FilterType::lowpass, LOWFREQCUTOFF }
+        {NEEDS_TRANS ("HighShelf"),           FilterType::highpass, HIGHFREQCUTOFF },
+        { NEEDS_TRANS ("High Mid Peak/Bell"), FilterType::bandpass, HIGHMIDFREQPEAK},
+        { NEEDS_TRANS ("Peak/Bell"),          FilterType::bandpass, MIDFREQPEAK    },
+        { NEEDS_TRANS ("LowShelf"),           FilterType::lowpass,  LOWFREQCUTOFF  }
     };
 
     filters.ensureStorageAllocated (numElementsInArray (configs));
 
     auto layout = createDefaultParameterLayout();
-    const std::function<float (float, float, float)> from0To1 = [] (float start, float end, float value) -> float {
+    const std::function<float (float, float, float)> from0To1 = [] (float start, float end, float value) -> float
+    {
         float skew = 0.65f;
         if (value < skew)
             return (skew - value) / skew * start;
@@ -218,7 +223,8 @@ AudioProcessorValueTreeState::ParameterLayout SimpleEQProcessor::createParameter
         return (value - skew) / (1.f - skew) * end;
     };
 
-    const std::function<float (float, float, float)> to0To1 = [] (float start, float end, float db) -> float {
+    const std::function<float (float, float, float)> to0To1 = [] (float start, float end, float db) -> float
+    {
         float skew = 0.65f;
         if (db < 0.0f)
             return ((-db / start) + 1.f) * skew;
@@ -241,7 +247,8 @@ AudioProcessorValueTreeState::ParameterLayout SimpleEQProcessor::createParameter
                                                                      true,
                                                                      getName(),
                                                                      AudioProcessorParameter::genericParameter,
-                                                                     [] (float value, int) -> String {
+                                                                     [] (float value, int) -> String
+                                                                     {
                                                                          if (approximatelyEqual (value, 0.0f))
                                                                              return "0 dB";
 
@@ -277,9 +284,11 @@ AudioProcessorValueTreeState::ParameterLayout SimpleEQProcessor::createParameter
 
     return layout;
 }
-void SimpleEQProcessor::parameterValueChanged (int, float)
+void EQProcessor::parameterValueChanged (int, float)
 {
     const ScopedLock sl (getCallbackLock());
     for (auto* f: filters)
         f->updateParams();
+}
+
 }
