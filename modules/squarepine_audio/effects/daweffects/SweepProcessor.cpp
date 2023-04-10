@@ -147,7 +147,6 @@ void SweepProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
     }
     else
     {
-        float gateAmount = 1.f;
         for (int c = 0; c < numChannels ; ++c)
         {
             for (int n = 0; n < numSamples ; ++n)

@@ -1,9 +1,9 @@
 class PhaseIncrementer
 {
 public:
-    double getNextSample(int c)
+    float getNextSample(int c)
     {
-        double output = currentAngle[c];
+        float output = currentAngle[c];
         currentAngle[c] += angleChange;
         if (currentAngle[c] > pix2){
             currentAngle[c] -= pix2;
@@ -11,22 +11,25 @@ public:
         return output;
     }
     
-    void setFrequency (double freq)
+    void setFrequency (float freq)
     {
         frequency = freq;
-        angleChange = frequency * 2.0f * M_PI / Fs;
+        angleChange = frequency * 2.0f * f_PI / Fs;
     }
     
     void prepare (double sampleRate, int )
     {
-        Fs = sampleRate;
-        angleChange = frequency * 2.0f * M_PI / Fs;
+        Fs = static_cast<float> (sampleRate);
+        angleChange = frequency * 2.0f * f_PI / Fs;
     }
     
 private:
-    double pix2 = 2.0 * M_PI;
-    double currentAngle[2] = {0.0};
-    double angleChange = 0.0;
-    double frequency = 1.0;
-    double Fs = 44100.0;
+    
+    float f_PI = static_cast<float> (M_PI);
+    
+    float pix2 = 2.0f * f_PI;
+    float currentAngle[2] = {0.0f};
+    float angleChange = 0.0f;
+    float frequency = 1.0f;
+    float Fs = 44100.0f;
 };

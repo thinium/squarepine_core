@@ -45,7 +45,7 @@ ShimmerProcessor::ShimmerProcessor (int idNum)
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
                                                                  [] (float value, int) -> String {
-                                                                     String txt (roundToInt (value * 100.f)/100.f);
+                                                                     String txt (round (value * 100.f)/100.f);
                                                                      return txt;
                                                                      ;
                                                                  });

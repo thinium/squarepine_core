@@ -44,7 +44,7 @@
             << "--------------------------------------------------" << newLine << newLine
             << "=== Auftakt Information ===" << newLine << newLine
             << "Build Date: " << CaufTAKT_If::GetBuildDate() << newLine
-            << "Version: " << CaufTAKT_If::GetVersion () << newLine
+            //<< "Version: " << CaufTAKT_If::GetVersion () << newLine
             << newLine
             << newLine
             << "--------------------------------------------------" << newLine;

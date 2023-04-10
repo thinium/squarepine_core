@@ -35,5 +35,6 @@ private:
     float tr = 1.f; // momentary trasposition
     float delta = 0.f; // rate of change for delay (samples)
     
+    float f_PI = static_cast<float> (M_PI);
 };
 

@@ -35,7 +35,7 @@ NoiseProcessor::NoiseProcessor (int idNum)
                                                                    "Colour ",
                                                                    AudioProcessorParameter::genericParameter,
                                                                    [] (float value, int) -> String {
-                                                                       String txt (roundToInt (100.f*value)/100.f);
+                                                                       String txt (round (100.f*value)/100.f);
                                                                        return txt;
                                                                        ;
                                                                    });

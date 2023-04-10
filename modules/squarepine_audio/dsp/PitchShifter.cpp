@@ -18,53 +18,53 @@ float PitchShifter::processSample(float x, int channel){
     float g3 = 0.5f * sin(a3[channel]) + 0.5f;
     
     a1[channel] += angleChange;
-    if (a1[channel] > 2.f*M_PI){
-        a1[channel] -= 2.f*M_PI;
+    if (a1[channel] > 2.f*f_PI){
+        a1[channel] -= 2.f*f_PI;
     }
     else if(a1[channel] < 0.f){
-        a1[channel] += 2.f*M_PI;
+        a1[channel] += 2.f*f_PI;
     }
     
     a2[channel] += angleChange;
-    if (a2[channel] > 2.f*M_PI){
-        a2[channel] -= 2.f*M_PI;
+    if (a2[channel] > 2.f*f_PI){
+        a2[channel] -= 2.f*f_PI;
     }
     else if(a2[channel] < 0.f){
-        a2[channel] += 2.f*M_PI;
+        a2[channel] += 2.f*f_PI;
     }
     
     a3[channel] += angleChange;
-    if (a3[channel] > 2.f*M_PI){
-        a3[channel] -= 2.f*M_PI;
+    if (a3[channel] > 2.f*f_PI){
+        a3[channel] -= 2.f*f_PI;
     }
     else if(a3[channel] < 0.f){
-        a3[channel] += 2.f*M_PI;
+        a3[channel] += 2.f*f_PI;
     }
     
     return (g1*x1 + g2*x2 + g3*x3) * (2.f/3.f);
 }
 
-void PitchShifter::setFs(float Fs){
-    this->Fs = Fs;
+void PitchShifter::setFs(float sampleRate){
+    Fs = sampleRate;
     pitchDelay1.setFs(Fs);
     pitchDelay2.setFs(Fs);
     pitchDelay3.setFs(Fs);
     
     float period = (MAX_DELAY_SAMPLES-1.f) / (delta*Fs);
     freq = 1.f/period;
-    angleChange = freq * (2.f*M_PI) / Fs;
+    angleChange = freq * (2.f*f_PI) / Fs;
 }
 
 
-void PitchShifter::setPitch(float semitone){
-    this->semitone = semitone;
+void PitchShifter::setPitch(float st){
+    semitone = st;
     tr = powf(2.f,semitone/12.f);
     delta = 1.f - tr;
     
     float period = (MAX_DELAY_SAMPLES-1.f) / (delta*Fs);
     freq = 1.f/period;
     
-    angleChange = freq * (2.f*M_PI) / Fs;
+    angleChange = freq * (2.f*f_PI) / Fs;
     
     pitchDelay1.setPitch(semitone);
     pitchDelay2.setPitch(semitone);

@@ -142,7 +142,7 @@ public:
         float ylp = s2[channel] + x2;
         s2[channel] = x2 + ylp;
 
-        return ylp;
+        return yhp;
     }
 private:
     SmoothedValue<float, ValueSmoothingTypes::Linear> normFreqSmooth { 0.0f };
@@ -228,12 +228,12 @@ public:
         }
     }
     
-    double processSample(double x, int channel)
+    float processSample(float x, int channel)
     {
         performSmoothing();
 
         // Output, processed sample (Direct Form 1)
-        double y = b0 * x + b1 * x1[channel] + b2 * x2[channel]
+        float y = b0 * x + b1 * x1[channel] + b2 * x2[channel]
                    + (-a1) * y1[channel] + (-a2) * y2[channel];
 
         x2[channel] = x1[channel];// store delay samples for next process step
@@ -246,49 +246,50 @@ public:
 
     void setFs (double newFs)
     {
-        Fs = newFs;
+        Fs = static_cast<float> (newFs);
         updateCoefficients();// Need to update if Fs changes
     }
 
-    void setFreq (double newFreq)
+    void setFreq (float newFreq)
     {
-        freqTarget = jlimit(20.0, 20000.0, newFreq);    }
-
-    void setQ (double newQ)
-    {
-        qTarget = jlimit(0.1, 10.0, newQ);
+        freqTarget = jlimit(20.0f, 20000.0f, newFreq);
     }
 
-    void setAmpdB (double newAmpdB)
+    void setQ (float newQ)
+    {
+        qTarget = jlimit(0.1f, 10.0f, newQ);
+    }
+
+    void setAmpdB (float newAmpdB)
     {
         ampdB = newAmpdB;
     }
 private:
     FilterType filterType = LPF;
 
-    double Fs = 48000.0;// Sampling Rate
+    float Fs = 48000.0;// Sampling Rate
 
     // Variables for User to Modify Filter
-    double freqTarget = 20.0;// frequency in Hz
-    double freqSmooth = 20.0;
-    double qTarget = 0.707;// Q => [0.1 - 10]
-    double qSmooth = 0.707;
-    double ampdB = 0.0;// Amplitude on dB scale
+    float freqTarget = 20.0f;// frequency in Hz
+    float freqSmooth = 20.0f;
+    float qTarget = 0.7071f;// Q => [0.1 - 10]
+    float qSmooth = 0.7071f;
+    float ampdB = 0.0f;// Amplitude on dB scale
 
     // Variables for Biquad Implementation
     // 2 channels - L,R : Up to 2nd Order
-    double x1[2] = { 0.0 };// 1 sample of delay feedforward
-    double x2[2] = { 0.0 };// 2 samples of delay feedforward
-    double y1[2] = { 0.0 };// 1 sample of delay feedback
-    double y2[2] = { 0.0 };// 2 samples of delay feedback
+    float x1[2] = { 0.0f };// 1 sample of delay feedforward
+    float x2[2] = { 0.0f };// 2 samples of delay feedforward
+    float y1[2] = { 0.0f };// 1 sample of delay feedback
+    float y2[2] = { 0.0f };// 2 samples of delay feedback
 
     // Filter coefficients
-    double b0 = 1.0;// initialized to pass signal
-    double b1 = 0.0;// without filtering
-    double b2 = 0.0;
-    double a0 = 1.0;
-    double a1 = 0.0;
-    double a2 = 0.0;
+    float b0 = 1.0f;// initialized to pass signal
+    float b1 = 0.0f;// without filtering
+    float b2 = 0.0f;
+    float a0 = 1.0f;
+    float a1 = 0.0f;
+    float a2 = 0.0f;
     
     int smoothingCount = 0;
     const int SAMPLESFORSMOOTHING = 256;
@@ -308,107 +309,108 @@ private:
     
     void updateCoefficients()
     {
-        double A = std::pow (10.0, ampdB / 40.0);// Linear amplitude
+        float A = std::pow (10.0f, ampdB / 40.0f);// Linear amplitude
 
         // Normalize frequency
-        double w0 = (2.0 * M_PI) * freqSmooth / Fs;
+        float f_PI = static_cast<float> (M_PI);
+        float w0 = (2.0f * f_PI) * freqSmooth / Fs;
 
         // Bandwidth/slope/resonance parameter
-        double alpha = std::sin (w0) / (2.0 * qSmooth);
+        float alpha = std::sin (w0) / (2.0f * qSmooth);
 
-        double cw0 = std::cos (w0);
+        float cw0 = std::cos (w0);
         switch (filterType)
         {
             case LPF:
             {
-                a0 = 1.0 + alpha;
-                double B0 = (1.0 - cw0) / 2.0;
+                a0 = 1.0f + alpha;
+                float B0 = (1.0f - cw0) / 2.0f;
                 b0 = B0 / a0;
-                double B1 = 1.0 - cw0;
+                float B1 = 1.0f - cw0;
                 b1 = B1 / a0;
-                double B2 = (1.0 - cw0) / 2.0;
+                float B2 = (1.0f - cw0) / 2.0f;
                 b2 = B2 / a0;
-                double A1 = -2.0 * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                double A2 = 1.0 - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
                 break;
             }
             case HPF:
             {
-                a0 = 1.0 + alpha;
-                double B0 = (1.0 + cw0) / 2.0;
+                a0 = 1.0f + alpha;
+                float B0 = (1.0f + cw0) / 2.0f;
                 b0 = B0 / a0;
-                double B1 = -(1.0 + cw0);
+                float B1 = -(1.0f + cw0);
                 b1 = B1 / a0;
-                double B2 = (1.0 + cw0) / 2.0;
+                float B2 = (1.0f + cw0) / 2.0f;
                 b2 = B2 / a0;
-                double A1 = -2.0 * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                double A2 = 1.0 - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
                 break;
             }
             case BPF1:
             {
-                double sw0 = std::sin (w0);
-                a0 = 1.0 + alpha;
-                double B0 = sw0 / 2.0;
+                float sw0 = std::sin (w0);
+                a0 = 1.0f + alpha;
+                float B0 = sw0 / 2.0f;
                 b0 = B0 / a0;
-                double B1 = 0.0;
+                float B1 = 0.0f;
                 b1 = B1 / a0;
-                double B2 = -sw0 / 2.0;
+                float B2 = -sw0 / 2.0f;
                 b2 = B2 / a0;
-                double A1 = -2.0 * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                double A2 = 1.0 - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
                 break;
             }
             case BPF2:
             {
-                a0 = 1.0 + alpha;
-                double B0 = alpha;
+                a0 = 1.0f + alpha;
+                float B0 = alpha;
                 b0 = B0 / a0;
-                double B1 = 0.0;
+                float B1 = 0.0f;
                 b1 = B1 / a0;
-                double B2 = -alpha;
+                float B2 = -alpha;
                 b2 = B2 / a0;
-                double A1 = -2.0 * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                double A2 = 1.0 - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
 
                 break;
             }
             case NOTCH:
             {
-                a0 = 1.0 + alpha;
-                double B0 = 1.0;
+                a0 = 1.0f + alpha;
+                float B0 = 1.0f;
                 b0 = B0 / a0;
-                double B1 = -2.0 * cw0;
+                float B1 = -2.0f * cw0;
                 b1 = B1 / a0;
-                double B2 = 1.0;
+                float B2 = 1.0f;
                 b2 = B2 / a0;
-                double A1 = -2.0 * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                double A2 = 1.0 - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
                 break;
             }
             case LSHELF:
             {
-                double sqA = std::sqrt (A);
-                a0 = (A + 1.0) + (A - 1.0) * cw0 + 2.0 * sqA * alpha;
-                double B0 = A * ((A + 1.0) - (A - 1.0) * cw0 + 2.0 * sqA * alpha);
+                float sqA = std::sqrt (A);
+                a0 = (A + 1.0f) + (A - 1.0f) * cw0 + 2.0f * sqA * alpha;
+                float B0 = A * ((A + 1.0f) - (A - 1.0f) * cw0 + 2.0f * sqA * alpha);
                 b0 = B0 / a0;
-                double B1 = 2.0 * A * ((A - 1.0) - (A + 1.0) * cw0);
+                float B1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cw0);
                 b1 = B1 / a0;
-                double B2 = A * ((A + 1.0) - (A - 1.0) * cw0 - 2.0 * sqA * alpha);
+                float B2 = A * ((A + 1.0f) - (A - 1.0f) * cw0 - 2.0f * sqA * alpha);
                 b2 = B2 / a0;
-                double A1 = -2.0 * ((A - 1.0) + (A + 1.0) * cw0);
+                float A1 = -2.0f * ((A - 1.0f) + (A + 1.0f) * cw0);
                 a1 = A1 / a0;
-                double A2 = (A + 1.0) + (A - 1.0) * cw0 - 2.0 * sqA * alpha;
+                float A2 = (A + 1.0f) + (A - 1.0f) * cw0 - 2.0f * sqA * alpha;
                 a2 = A2 / a0;
 
                 break;
@@ -416,17 +418,17 @@ private:
 
             case HSHELF:
             {
-                double sqA = std::sqrt (A);
-                a0 = (A + 1.0) - (A - 1.0) * cw0 + 2.0 * sqA * alpha;
-                double B0 = A * ((A + 1.0) + (A - 1.0) * cw0 + 2.0 * sqA * alpha);
+                float sqA = std::sqrt (A);
+                a0 = (A + 1.0f) - (A - 1.0f) * cw0 + 2.0f * sqA * alpha;
+                float B0 = A * ((A + 1.0f) + (A - 1.0f) * cw0 + 2.0f * sqA * alpha);
                 b0 = B0 / a0;
-                double B1 = -2.0 * A * ((A - 1.0) + (A + 1.0) * cw0);
+                float B1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cw0);
                 b1 = B1 / a0;
-                double B2 = A * ((A + 1.0) + (A - 1.0) * cw0 - 2.0 * sqA * alpha);
+                float B2 = A * ((A + 1.0f) + (A - 1.0f) * cw0 - 2.0f * sqA * alpha);
                 b2 = B2 / a0;
-                double A1 = 2.0 * ((A - 1.0) - (A + 1.0) * cw0);
+                float A1 = 2.0f * ((A - 1.0f) - (A + 1.0f) * cw0);
                 a1 = A1 / a0;
-                double A2 = (A + 1.0) - (A - 1.0) * cw0 - 2.0 * sqA * alpha;
+                float A2 = (A + 1.0f) - (A - 1.0f) * cw0 - 2.0f * sqA * alpha;
                 a2 = A2 / a0;
 
                 break;
@@ -435,16 +437,16 @@ private:
             case PEAK:
 
             {
-                a0 = 1.0 + alpha / A;
-                double B0 = 1.0 + alpha * A;
+                a0 = 1.0f + alpha / A;
+                float B0 = 1.0f + alpha * A;
                 b0 = B0 / a0;
-                double B1 = -2.0 * cw0;
+                float B1 = -2.0f * cw0;
                 b1 = B1 / a0;
-                double B2 = 1.0 - alpha * A;
+                float B2 = 1.0f - alpha * A;
                 b2 = B2 / a0;
-                double A1 = -2.0 * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                double A2 = 1.0 - alpha / A;
+                float A2 = 1.0f - alpha / A;
                 a2 = A2 / a0;
 
                 break;
@@ -452,16 +454,16 @@ private:
 
             case APF:
             {
-                a0 = 1.0 + alpha;
-                double B0 = 1.0 - alpha;
+                a0 = 1.0f + alpha;
+                float B0 = 1.0f - alpha;
                 b0 = B0 / a0;
-                double B1 = -2.0 * cw0;
+                float B1 = -2.0f * cw0;
                 b1 = B1 / a0;
-                double B2 = 1.0 + alpha;
+                float B2 = 1.0f + alpha;
                 b2 = B2 / a0;
-                double A1 = -2.0 * cw0;
+                float A1 = -2.0f * cw0;
                 a1 = A1 / a0;
-                double A2 = 1.0 - alpha;
+                float A2 = 1.0f - alpha;
                 a2 = A2 / a0;
 
                 break;

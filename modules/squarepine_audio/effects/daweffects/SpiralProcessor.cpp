@@ -75,9 +75,9 @@ SpiralProcessor::SpiralProcessor (int idNum)
     delayUnit.setDelaySamples (200 * 48);
     
     hpf.setFilterType (DigitalFilter::FilterType::LSHELF);
-    hpf.setFreq (2000.0);
-    hpf.setQ (0.3);
-    hpf.setAmpdB(-3.0);
+    hpf.setFreq (2000.0f);
+    hpf.setQ (0.3f);
+    hpf.setAmpdB(-3.0f);
     
 }
 

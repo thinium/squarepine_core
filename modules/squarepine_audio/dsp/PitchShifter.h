@@ -23,12 +23,14 @@ private:
     PitchDelay pitchDelay1{1};
     PitchDelay pitchDelay2{2};
     PitchDelay pitchDelay3{3};
-
-    float a1[2] = {1.5f*M_PI,1.5f*M_PI};
-    float a2[2] = {(1.5f*M_PI) + 2.f*M_PI/3.f ,
-                    (1.5f*M_PI) + 2.f*M_PI/3.f};
-    float a3[2] = {(1.5f*M_PI) + 4.f*M_PI/3.f ,
-                     (1.5f*M_PI) + 4.f*M_PI/3.f};
+    
+    float f_PI = static_cast<float> (M_PI);
+    
+    float a1[2] = {1.5f*f_PI,1.5f*f_PI};
+    float a2[2] = {(1.5f*f_PI) + 2.f*f_PI/3.f ,
+                    (1.5f*f_PI) + 2.f*f_PI/3.f};
+    float a3[2] = {(1.5f*f_PI) + 4.f*f_PI/3.f ,
+                     (1.5f*f_PI) + 4.f*f_PI/3.f};
     float angleChange;
     float freq;
     

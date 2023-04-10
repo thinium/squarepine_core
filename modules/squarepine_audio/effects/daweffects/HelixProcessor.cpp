@@ -183,7 +183,7 @@ Identifier HelixProcessor::getIdentifier() const { return "Helix" + String (idNu
 /** @internal */
 bool HelixProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void HelixProcessor::parameterValueChanged (int paramIndex, float value)
+void HelixProcessor::parameterValueChanged (int paramIndex, float )
 {
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.

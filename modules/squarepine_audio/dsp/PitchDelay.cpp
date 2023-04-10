@@ -5,8 +5,7 @@
 //  Copyright © 2020 Eric Tarr. All rights reserved.
 //
 
-PitchDelay::PitchDelay(int phaseChoice){
-    this->phaseChoice = phaseChoice;
+PitchDelay::PitchDelay(int pc) : phaseChoice (pc){
     if (phaseChoice == 1){
         delay[0] = 2.f; delay[1] = 2.f;
     }
@@ -22,26 +21,26 @@ PitchDelay::PitchDelay(int phaseChoice){
 
 float PitchDelay::processSample(float x, int channel, float & angle){
     
-//    if (delay[channel] < 1.f){
-//        return x;
-//    }
-//    else{
+    if (delay[channel] < 1.f){
+        return x;
+    }
+    else{
         
         delay[channel] += delta;
         if (delta <= 0.f && delay[channel] < 2.f){
             delay[channel] = MAX_DELAY_SAMPLES;
-            angle = 1.5f*M_PI;
+            angle = 1.5f*f_PI;
         }
         if (delta > 0.f && delay[channel] > MAX_DELAY_SAMPLES){
             delay[channel] = 2.0f;
-            angle = 1.5f*M_PI;
+            angle = 1.5f*f_PI;
         }
         
         // Delay Buffer
         // "delay" can be fraction
-        int d1 = floor(delay[channel]);
+        int d1 = static_cast<int> (floor(delay[channel]));
         int d2 = d1 + 1;
-        float g2 = delay[channel] - (float)d1;
+        float g2 = delay[channel] - static_cast<float> (d1);
         float g1 = 1.0f - g2;
         
         int indexD1 = index[channel] - d1;
@@ -66,29 +65,29 @@ float PitchDelay::processSample(float x, int channel, float & angle){
         }
         
         return y;
-    //}
+    }
 }
 
-void PitchDelay::setFs(float Fs){
-    this->Fs = Fs;
-    this->MAX_DELAY_SAMPLES = MAX_DELAY_SEC * Fs;
+void PitchDelay::setFs(float sampleRate){
+    Fs = sampleRate;
+    MAX_DELAY_SAMPLES = MAX_DELAY_SEC * Fs;
     
     if (phaseChoice == 1){
         delay[0] = 2.f; delay[1] = 2.f;
     }
     if (phaseChoice == 2){
-        delay[0] = (float)MAX_DELAY_SAMPLES/3.0f;
-        delay[1] = (float)MAX_DELAY_SAMPLES/3.0f;
+        delay[0] = MAX_DELAY_SAMPLES/3.0f;
+        delay[1] = MAX_DELAY_SAMPLES/3.0f;
     }
     if (phaseChoice == 3){
-        delay[0] = 2.f*(float)MAX_DELAY_SAMPLES/3.0f;
-        delay[1] = 2.f*(float)MAX_DELAY_SAMPLES/3.0f;
+        delay[0] = 2.f*MAX_DELAY_SAMPLES/3.0f;
+        delay[1] = 2.f*MAX_DELAY_SAMPLES/3.0f;
     }
 }
 
 
-void PitchDelay::setPitch(float semitone){
-    this->semitone = semitone;
+void PitchDelay::setPitch(float st){
+    semitone = st;
     tr = powf(2.f,semitone/12.f);
     delta = 1.f - tr;
 }

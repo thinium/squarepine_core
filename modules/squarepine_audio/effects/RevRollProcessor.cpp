@@ -161,8 +161,6 @@ void RevRollProcessor::fillSegmentBuffer (AudioBuffer<float> & buffer)
     int bufferSize = buffer.getNumSamples();
     int numChannels = buffer.getNumChannels();
     
-    int startingIndex = segmentFillIndex; // used for reseting segmentFillIndex at the end of funciton
-    
     if (segmentFillIndex + bufferSize < maxSegmentIndex)
     {
         // Condition when there is enough space to copy entire buffer to segmentBuffer
