@@ -13,13 +13,13 @@ namespace djdawprocessor
 /// the BPF to narrow from 20 or 20k to the center frequency (set by the extra parameter).
 
 class SweepProcessor final : public InternalProcessor,
-public AudioProcessorParameter::Listener
+                             public AudioProcessorParameter::Listener
 {
 public:
     //Constructor with ID
     SweepProcessor (int idNum = 1);
-    ~SweepProcessor()override;
-    
+    ~SweepProcessor() override;
+
     //============================================================================== Audio processing
     void prepareToPlay (double Fs, int bufferSize) override;
     void processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override;
@@ -31,11 +31,10 @@ public:
     bool supportsDoublePrecisionProcessing() const override;
     //============================================================================== Parameter callbacks
     void parameterValueChanged (int paramNum, float value) override;
-    void parameterGestureChanged (int, bool) override{}
-    
+    void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    
+
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* fxFrequencyParam = nullptr;
     NotifiableAudioParameterFloat* colourParam = nullptr;
@@ -44,22 +43,21 @@ private:
 
     DigitalFilter lpf;
     DigitalFilter hpf;
-        
+
     const float DEFAULTQ = 0.7071f;
     const float RESQ = 4.f;
     const float INITLPF = 20000.f;
     const float INITHPF = 10.f;
-    
+
     int idNumber = 1;
 
-    float wetSmooth[2] = {0.f};
-    
+    float wetSmooth[2] = { 0.f };
+
     // Gate/Transient Designer (comparison of fast and slow  envelope)
-    float gFast = 0.9991f; // Feedback gain for "fast" envelope
-    float fbFast[2] = {0.f}; // delay variable
-    float gSlow = 0.9999f; // feedback gain for "slow" envelope
-    float fbSlow[2] = {0.f};
-    
+    float gFast = 0.9991f;// Feedback gain for "fast" envelope
+    float fbFast[2] = { 0.f };// delay variable
+    float gSlow = 0.9999f;// feedback gain for "slow" envelope
+    float fbSlow[2] = { 0.f };
 };
 
 }

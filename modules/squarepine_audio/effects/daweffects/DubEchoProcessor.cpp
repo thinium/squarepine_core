@@ -18,13 +18,13 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String {
-        if (value > 0)
-            return TRANS ("On");
-        return TRANS ("Off");
-        ;
-    });
-    
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> timeRange = { 1.f, 4000.0f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("delayTime", "Echo Time", timeRange, 200.f,
@@ -86,13 +86,13 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (echoColourParam);
-    
+
     hpf.setFilterType (DigitalFilter::FilterType::HPF);
     hpf.setFreq (400.f);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
-    
-    float samplesOfDelay = timeParam->get()/1000.f * static_cast<float> (sampleRate);
+
+    float samplesOfDelay = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
     delayBlock.setDelaySamples (samplesOfDelay);
 }
 
@@ -116,10 +116,9 @@ void DubEchoProcessor::prepareToPlay (double Fs, int /* bufferSize */)
 
 void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
-    
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float wet;
     float feedbackGain;
     bool bypass;
@@ -127,27 +126,27 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         feedbackGain = feedbackParam->get();
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
     }
-    
+
     if (bypass)
         return;
-    
-    for (int c = 0; c < numChannels ; ++c)
+
+    for (int c = 0; c < numChannels; ++c)
     {
-        for (int n = 0; n < numSamples ; ++n)
+        for (int n = 0; n < numSamples; ++n)
         {
-            float x = buffer.getWritePointer(c) [n];
-            float y = x + wetSmooth[c] * feedbackSample[c];
-            
-            auto y_filter = hpf.processSample(y,c);
-            y_filter = lpf.processSample(y_filter,c);
-            y_filter = hpf.processSample(y_filter,c);
-            feedbackSample[c] = gainSmooth[c] * delayBlock.processSample(static_cast<float> (y_filter),c);
-            
+            float x = buffer.getWritePointer (c)[n];
+            float y = (1.f - gainSmooth[c]) * x + wetSmooth[c] * feedbackSample[c];
+
+            auto y_filter = hpf.processSample (y, c);
+            y_filter = lpf.processSample (y_filter, c);
+            y_filter = hpf.processSample (y_filter, c);
+            feedbackSample[c] = gainSmooth[c] * delayBlock.processSample (y_filter, c);
+
             gainSmooth[c] = 0.999f * gainSmooth[c] + 0.001f * feedbackGain;
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            buffer.getWritePointer(c) [n] = y;
+            buffer.getWritePointer (c)[n] = y;
         }
     }
 }
@@ -160,7 +159,6 @@ bool DubEchoProcessor::supportsDoublePrecisionProcessing() const { return false;
 //============================================================================== Parameter callbacks
 void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
 {
-    
     const ScopedLock sl (getCallbackLock());
     switch (paramIndex)
     {
@@ -170,38 +168,37 @@ void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
             break;
         }
         case (2):
-        {    // Wet/dry (handled in processBlock)
+        {// Wet/dry (handled in processBlock)
             break;
         }
         case (3):
-        {    //Colour
+        {//Colour
             if (value > 0.f)
             {
-                float freqHz = 4.f * std::powf(10.f, value + 2.f); // 400 - 4000
+                float freqHz = 4.f * std::powf (10.f, value + 2.f);// 400 - 4000
                 hpf.setFreq (freqHz);
                 lpf.setFreq (10000.f);
             }
             else
             {
                 float normValue = 1.f + value;
-                float freqHz = std::powf(10.f,normValue + 3.f) + 1000.f; // 11000 -> 2000
+                float freqHz = std::powf (10.f, normValue + 3.f) + 1000.f;// 11000 -> 2000
                 lpf.setFreq (freqHz);
                 hpf.setFreq (400.f);
             }
             break;
         }
         case (4):
-        {    //feedback (handled in processBlock)
+        {//feedback (handled in processBlock)
             break;
         }
         case (5):
-        {    //Time
-            float samplesOfDelay = value/1000.f * static_cast<float> (sampleRate);
+        {//Time
+            float samplesOfDelay = value / 1000.f * static_cast<float> (sampleRate);
             delayBlock.setDelaySamples (samplesOfDelay);
             break;
         }
     }
-    
 }
 
 }

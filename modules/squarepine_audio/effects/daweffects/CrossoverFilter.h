@@ -1,4 +1,5 @@
-
+namespace djdawprocessor
+{
 // CrossoverFilter.h
 // Based on Linkwitz-Riley filters
 // Which are 4th-order filters
@@ -76,3 +77,5 @@ private:
     CrossoverFilter lpf;
     CrossoverFilter hpf;
 };
+
+}

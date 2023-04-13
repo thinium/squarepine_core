@@ -24,8 +24,8 @@ class HelixProcessor final : public BandProcessor
 public:
     //Constructor with ID
     HelixProcessor (int idNum = 1);
-    ~HelixProcessor()override;
-    
+    ~HelixProcessor() override;
+
     //============================================================================== Audio processing
     void prepareToPlay (double Fs, int bufferSize) override;
     void processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override;
@@ -37,32 +37,30 @@ public:
     bool supportsDoublePrecisionProcessing() const override;
     //============================================================================== Parameter callbacks
     void parameterValueChanged (int paramNum, float value) override;
-    void parameterGestureChanged (int, bool) override{}
-    
+    void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
-    
     int idNumber = 1;
 
     AudioBuffer<float> effectBuffer;
-    
-    float wetSmooth[2] = {0.f};
-    
+
+    float wetSmooth[2] = { 0.f };
+
     bool useElastiquePro = false;
     zplane::ElastiquePtr elastique;
     float pitchFactorTarget = 1.f;
     float pitchFactorSmooth = 1.f;
-    
+
     AudioBuffer<float> inputBuffer;
     AudioBuffer<float> outputBuffer;
-    
+
     FractionalDelay delayUnit;
-    
-    float z[2] = {0.f};
+
+    float z[2] = { 0.f };
     float sampleRate = 44100.f;
 };
 

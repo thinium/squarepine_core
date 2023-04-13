@@ -17,13 +17,14 @@ PingPongProcessor::PingPongProcessor (int idNum)
                                                                        String txt (percentage);
                                                                        return txt << "%";
                                                                    });
-  
-    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String {
-        if (value > 0)
-            return TRANS ("On");
-        return TRANS ("Off");
-        ;
-    });
+
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> timeRange = { 1.f, 4000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
@@ -54,7 +55,6 @@ PingPongProcessor::PingPongProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
-    
 }
 
 PingPongProcessor::~PingPongProcessor()
@@ -71,18 +71,17 @@ void PingPongProcessor::prepareToPlay (double sampleRate, int bufferSize)
     Fs = static_cast<float> (sampleRate);
     delayLeft.setFs (Fs);
     delayRight.setFs (Fs);
-    
+
     delayTime.reset (Fs, 0.5f);
-    float samplesOfDelay = timeParam->get()/1000.f * static_cast<float> (sampleRate);
+    float samplesOfDelay = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
     delayLeft.setDelaySamples (samplesOfDelay);
     delayRight.setDelaySamples (samplesOfDelay);
 }
 void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
-    
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float wet;
     bool bypass;
     float feedback = 0.6f;
@@ -91,39 +90,38 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
         wet = wetDryParam->get();
         bypass = !fxOnParam->get();
     }
-    
+
     if (bypass)
         return;
-    
+
     fillMultibandBuffer (buffer);
-    
-    for (int n = 0; n < numSamples ; ++n)
+
+    for (int n = 0; n < numSamples; ++n)
     {
         float samplesOfDelay = delayTime.getNextValue();
         delayLeft.setDelaySamples (samplesOfDelay);
         delayRight.setDelaySamples (samplesOfDelay);
-        
-        float xL = multibandBuffer.getWritePointer(0) [n];
-        float xR = multibandBuffer.getWritePointer(1) [n];
+
+        float xL = multibandBuffer.getWritePointer (0)[n];
+        float xR = multibandBuffer.getWritePointer (1)[n];
 
         float xSum = 0.7071f * (xL + xR);
-        
-        float dL = delayLeft.processSample (xSum + feedback * z,0);
-        z = delayRight.processSample (dL,0);
+
+        float dL = delayLeft.processSample (xSum + feedback * z, 0);
+        z = delayRight.processSample (dL, 0);
 
         wetSmooth = 0.999f * wetSmooth + 0.001f * wet;
-        
-        multibandBuffer.getWritePointer(0) [n] = wetSmooth * dL;
-        multibandBuffer.getWritePointer(1) [n] = wetSmooth * z;
-        
+
+        multibandBuffer.getWritePointer (0)[n] = wetSmooth * dL;
+        multibandBuffer.getWritePointer (1)[n] = wetSmooth * z;
+
         float drySmooth = 1.f - wetSmooth;
         buffer.getWritePointer (0)[n] *= (drySmooth);
         buffer.getWritePointer (1)[n] *= (drySmooth);
-
     }
-    
+
     for (int c = 0; c < numChannels; ++c)
-        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }
 
 const String PingPongProcessor::getName() const { return TRANS ("Ping Pong"); }
@@ -153,9 +151,9 @@ void PingPongProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-            float samplesOfDelay = value/1000.f * Fs;
+            float samplesOfDelay = value / 1000.f * Fs;
             delayTime.setTargetValue (samplesOfDelay);
-            
+
             break;
         }
     }

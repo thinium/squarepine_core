@@ -22,8 +22,8 @@ class SpaceProcessor final : public V10SendProcessor
 public:
     //Constructor with ID
     SpaceProcessor (int idNum = 1);
-    ~SpaceProcessor()override;
-    
+    ~SpaceProcessor() override;
+
     //============================================================================== Audio processing
     void prepareToPlay (double Fs, int bufferSize) override;
     void processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override;
@@ -37,11 +37,10 @@ public:
     bool supportsDoublePrecisionProcessing() const override;
     //============================================================================== Parameter callbacks
     void parameterValueChanged (int paramNum, float value) override;
-    void parameterGestureChanged (int, bool) override{}
-    
+    void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    
+
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* reverbColourParam = nullptr;
@@ -50,12 +49,10 @@ private:
     //Using the Juce reverb
     Reverb reverb;
     void updateReverbParams();
-    
+
     DigitalFilter filter;
-    
+
     int idNumber = 1;
-    
-    
 };
 
 }

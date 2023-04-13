@@ -1,17 +1,18 @@
 class SwitchableTimeParameter : public AudioParameterBool
 {
 public:
-    SwitchableTimeParameter(): AudioParameterBool ("syncswitch",
-                                                   "syncswitch",
-                                                   false,
-                                                   AudioParameterBoolAttributes().withLabel ("Time Sync ").withStringFromValueFunction ([] (bool value, int) -> String {
-                                                       if (value > 0)
-                                                           return TRANS ("Sync On");
-                                                       return TRANS ("Sync Off");
-                                                   }))
+    SwitchableTimeParameter()
+        : AudioParameterBool ("syncswitch",
+                              "syncswitch",
+                              false,
+                              AudioParameterBoolAttributes().withLabel ("Time Sync ").withStringFromValueFunction ([] (bool value, int) -> String
+                                                                                                                   {
+                                                                                                                       if (value > 0)
+                                                                                                                           return TRANS ("Sync On");
+                                                                                                                       return TRANS ("Sync Off");
+                                                                                                                   }))
     {
     }
-
 public:
     void addChildrenToLayout (AudioProcessorValueTreeState::ParameterLayout& layout)
     {
@@ -23,7 +24,8 @@ public:
                                                                       true,// isAutomatable
                                                                       "tDelay Time",
                                                                       AudioProcessorParameter::genericParameter,
-                                                                      [] (float value, int) -> String {
+                                                                      [] (float value, int) -> String
+                                                                      {
                                                                           String txt (roundToInt (value));
                                                                           return txt << "ms";
                                                                           ;
@@ -40,7 +42,6 @@ public:
     {
         return 0.f;
     }
-
 private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     AudioParameterChoice* beatParam = nullptr;

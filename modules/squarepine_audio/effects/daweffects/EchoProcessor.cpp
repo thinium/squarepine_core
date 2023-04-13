@@ -2,8 +2,8 @@
 namespace djdawprocessor
 {
 
-EchoProcessor::EchoProcessor (int idNum):
-idNumber (idNum)
+EchoProcessor::EchoProcessor (int idNum)
+    : idNumber (idNum)
 {
     reset();
 
@@ -19,13 +19,13 @@ idNumber (idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<AudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
-                                                      {
-                                                          if (value > 0)
-                                                              return TRANS ("On");
-                                                          return TRANS ("Off");
-                                                          ;
-                                                      });
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> timeRange = { 10.f, 4000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
@@ -43,7 +43,7 @@ idNumber (idNum)
     delayUnit.setDelaySamples (200 * 48);
     wetDry.setTargetValue (0.5);
     delayTime.setTargetValue (200 * 48);
-    
+
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
@@ -52,7 +52,7 @@ idNumber (idNum)
 
     timeParam = time.get();
     timeParam->addListener (this);
-    
+
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
@@ -62,7 +62,6 @@ idNumber (idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
-    
 }
 
 EchoProcessor::~EchoProcessor()
@@ -76,14 +75,14 @@ EchoProcessor::~EchoProcessor()
 void EchoProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
-    
+
     const ScopedLock lock (getCallbackLock());
 
     delayUnit.setFs ((float) Fs);
     wetDry.reset (Fs, 0.5f);
     delayTime.reset (Fs, 0.5f);
     setRateAndBufferSizeDetails (Fs, bufferSize);
-    
+
     sampleRate = Fs;
 }
 void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
@@ -93,21 +92,20 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     const auto numSamples = buffer.getNumSamples();
 
     bool bypass;
-    float feedbackAmp = 0.6f;
+    float feedbackAmp = 0.6f;// appears to be constant from hardware demo
     {
         const ScopedLock lock (getCallbackLock());
-        bypass = !fxOnParam->get();
-        //feedbackAmp = feedbackParam->get(); // appears to be constant from hardware demo
+        bypass = ! fxOnParam->get();
     }
-    
+
     if (bypass)
         return;
-    
+
     fillMultibandBuffer (buffer);
-    
+
     float wet, x, y;
     wet = wetDry.getNextValue();
-    
+
     for (int s = 0; s < numSamples; ++s)
     {
         wet = wetDry.getNextValue();
@@ -121,7 +119,7 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
             buffer.getWritePointer (c)[s] *= (1.f - wet);
         }
     }
-    
+
     for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
 
@@ -154,12 +152,11 @@ void EchoProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-            float samplesOfDelay = value/1000.f * static_cast<float> (sampleRate);
+            float samplesOfDelay = value / 1000.f * static_cast<float> (sampleRate);
             delayTime.setTargetValue (samplesOfDelay);
             break;
         }
     }
-    
 }
 
 }

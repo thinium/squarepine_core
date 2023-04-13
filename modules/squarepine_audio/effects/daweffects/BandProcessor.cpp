@@ -74,7 +74,7 @@ void BandProcessor::parameterValueChanged (int paramIndex, float)
 void BandProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     setRateAndBufferSizeDetails (Fs, bufferSize);
-    
+
     int numChannels = 2;
     multibandBuffer.setSize (numChannels, bufferSize);
     tempBuffer.setSize (numChannels, bufferSize);
@@ -83,12 +83,10 @@ void BandProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& 
 {
     // Called for each individual effect's processing
     processAudioBlock (buffer, midi);
-    
 }
 
 void BandProcessor::fillMultibandBuffer (juce::AudioBuffer<float>& buffer)
 {
-    
     bool lowOn;
     bool midOn;
     bool highOn;
@@ -98,8 +96,8 @@ void BandProcessor::fillMultibandBuffer (juce::AudioBuffer<float>& buffer)
         midOn = midFrequencyToggleParam->get();
         highOn = highFrequencyToggleParam->get();
     }
-    
-    if (!lowOn || !midOn || !highOn)
+
+    if (! lowOn || ! midOn || ! highOn)
     {
         multibandBuffer.clear();
         if (lowOn)
@@ -109,8 +107,7 @@ void BandProcessor::fillMultibandBuffer (juce::AudioBuffer<float>& buffer)
             int numChannels = buffer.getNumChannels();
             int numSamples = buffer.getNumSamples();
             for (int c = 0; c < numChannels; ++c)
-                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer(c), numSamples);
-            
+                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer (c), numSamples);
         }
         if (midOn)
         {
@@ -119,7 +116,7 @@ void BandProcessor::fillMultibandBuffer (juce::AudioBuffer<float>& buffer)
             int numChannels = buffer.getNumChannels();
             int numSamples = buffer.getNumSamples();
             for (int c = 0; c < numChannels; ++c)
-                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer(c), numSamples);
+                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer (c), numSamples);
         }
         if (highOn)
         {
@@ -128,7 +125,7 @@ void BandProcessor::fillMultibandBuffer (juce::AudioBuffer<float>& buffer)
             int numChannels = buffer.getNumChannels();
             int numSamples = buffer.getNumSamples();
             for (int c = 0; c < numChannels; ++c)
-                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer(c), numSamples);
+                multibandBuffer.addFrom (c, 0, tempBuffer.getWritePointer (c), numSamples);
         }
     }
     else
@@ -136,8 +133,7 @@ void BandProcessor::fillMultibandBuffer (juce::AudioBuffer<float>& buffer)
         int numChannels = buffer.getNumChannels();
         int numSamples = buffer.getNumSamples();
         for (int c = 0; c < numChannels; ++c)
-            multibandBuffer.copyFrom (c, 0, buffer.getWritePointer(c), numSamples);
-        
+            multibandBuffer.copyFrom (c, 0, buffer.getWritePointer (c), numSamples);
     }
 }
 

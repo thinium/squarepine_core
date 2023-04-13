@@ -32,7 +32,8 @@ FlangerProcessor::FlangerProcessor (int idNum)
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
-                                                                 [] (float value, int) -> String {
+                                                                 [] (float value, int) -> String
+                                                                 {
                                                                      String txt (roundToInt (value));
                                                                      return txt << "ms";
                                                                      ;
@@ -71,8 +72,8 @@ FlangerProcessor::FlangerProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
-    
-    phase.setFrequency (1.f/(timeParam->get()/1000.f));
+
+    phase.setFrequency (1.f / (timeParam->get() / 1000.f));
     phaseWarble.setFrequency (2.f);
 }
 
@@ -88,7 +89,7 @@ FlangerProcessor::~FlangerProcessor()
 void FlangerProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
-    
+
     const ScopedLock sl (getCallbackLock());
     phase.prepare (Fs, bufferSize);
     phaseWarble.prepare (Fs, bufferSize);
@@ -98,7 +99,7 @@ void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
 {
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float depth = 10.f;
     float wet;
     bool bypass;
@@ -106,44 +107,43 @@ void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        phase.setFrequency (1.f/(timeParam->get()/1000.f));
-        bypass = !fxOnParam->get();
+        phase.setFrequency (1.f / (timeParam->get() / 1000.f));
+        bypass = ! fxOnParam->get();
         warble = xPadParam->get();
     }
-    
+
     if (bypass)
         return;
-    
+
     fillMultibandBuffer (buffer);
-    
+
     double lfoSample;
     double warbleSample;
-    for (int c = 0; c < numChannels ; ++c)
+    for (int c = 0; c < numChannels; ++c)
     {
-        for (int n = 0; n < numSamples ; ++n)
+        for (int n = 0; n < numSamples; ++n)
         {
-            lfoSample = phase.getNextSample(c);
-            warbleSample = phaseWarble.getNextSample(c);
-            float x = multibandBuffer.getWritePointer(c) [n];
-            
+            lfoSample = phase.getNextSample (c);
+            warbleSample = phaseWarble.getNextSample (c);
+            float x = multibandBuffer.getWritePointer (c)[n];
+
             float offset = depth + 5.f;
-            float warbleLFO = static_cast<float> (2.f * warbleSmooth[c] * sin(warbleSample));
-            float delayTime = static_cast<float> (depth * sin(lfoSample) + offset + warbleLFO);
-            
+            float warbleLFO = static_cast<float> (2.f * warbleSmooth[c] * sin (warbleSample));
+            float delayTime = static_cast<float> (depth * sin (lfoSample) + offset + warbleLFO);
+
             delayBlock.setDelaySamples (delayTime);
-            
+
             float wetSample = delayBlock.processSample (x, c);
-            
-            //float y = x + wetSmooth[c] * wetSample;
+
             float y = wetSmooth[c] * wetSample;
-            
+
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
             warbleSmooth[c] = 0.999f * warbleSmooth[c] + 0.001f * warble;
-            multibandBuffer.getWritePointer(c) [n] = y;
+            multibandBuffer.getWritePointer (c)[n] = y;
         }
     }
     for (int c = 0; c < numChannels; ++c)
-        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }
 
 const String FlangerProcessor::getName() const { return TRANS ("Flanger"); }
@@ -157,7 +157,7 @@ void FlangerProcessor::parameterValueChanged (int paramIndex, float value)
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
     BandProcessor::parameterValueChanged (paramIndex, value);
-    
+
     //Subtract the number of new parameters in this processor
     const ScopedLock sl (getCallbackLock());
     switch (paramIndex)
@@ -175,16 +175,13 @@ void FlangerProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-            
-            break; // time
+            break;// time
         }
         case (4):
         {
-            //depth = 20.0 * value;
-            break; // Modulation
+            break;// Modulation
         }
     }
 }
-
 
 }

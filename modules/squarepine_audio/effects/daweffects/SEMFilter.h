@@ -75,7 +75,7 @@ private:
 
     void updateCoefficients()
     {
-        R = 1.f/(2.f*resSmooth.getNextValue());
+        R = 1.f / (2.f * resSmooth.getNextValue());
         float normFreq = normFreqSmooth.getNextValue();
 
         float freqHz = 2.f * std::powf (10.f, 3.f * normFreq + 1.f);
@@ -85,7 +85,7 @@ private:
         g = wa * T / 2.f;
         G = g / (1.f + g);
         alpha = G;
-        alpha0 = 1.f / (1.f + 2.f*R*g + g*g);
+        alpha0 = 1.f / (1.f + 2.f * R * g + g * g);
         alpha1 = g;
         rho = 2.f * R + g;
     }
@@ -164,7 +164,7 @@ private:
 
     void updateCoefficients()
     {
-        R = 1.f/(2.f*resSmooth.getNextValue());
+        R = 1.f / (2.f * resSmooth.getNextValue());
         float normFreq = normFreqSmooth.getNextValue();
 
         float freqHz = 2.f * std::powf (10.f, 3.f * normFreq + 1.f);
@@ -174,7 +174,7 @@ private:
         g = wa * T / 2.f;
         G = g / (1.f + g);
         alpha = G;
-        alpha0 = 1.f / (1.f + 2.f*R*g + g*g);
+        alpha0 = 1.f / (1.f + 2.f * R * g + g * g);
         alpha1 = g;
         rho = 2.f * R + g;
     }
@@ -214,27 +214,27 @@ public:
             }
         }
     }
-    
+
     void processToOutputBuffer (juce::AudioBuffer<float>& inBuffer, juce::AudioBuffer<float>& outBuffer)
     {
-        for (int c = 0 ; c < inBuffer.getNumChannels() ; ++c)
+        for (int c = 0; c < inBuffer.getNumChannels(); ++c)
         {
-            for (int n = 0 ; n < inBuffer.getNumSamples() ; ++n)
+            for (int n = 0; n < inBuffer.getNumSamples(); ++n)
             {
                 float x = inBuffer.getWritePointer (c)[n];
-                float y = processSample (x,c);
+                float y = processSample (x, c);
                 outBuffer.getWritePointer (c)[n] = y;
             }
         }
     }
-    
-    float processSample(float x, int channel)
+
+    float processSample (float x, int channel)
     {
         performSmoothing();
 
         // Output, processed sample (Direct Form 1)
         float y = b0 * x + b1 * x1[channel] + b2 * x2[channel]
-                   + (-a1) * y1[channel] + (-a2) * y2[channel];
+                  + (-a1) * y1[channel] + (-a2) * y2[channel];
 
         x2[channel] = x1[channel];// store delay samples for next process step
         x1[channel] = x;
@@ -252,12 +252,12 @@ public:
 
     void setFreq (float newFreq)
     {
-        freqTarget = jlimit(20.0f, 20000.0f, newFreq);
+        freqTarget = jlimit (20.0f, 20000.0f, newFreq);
     }
 
     void setQ (float newQ)
     {
-        qTarget = jlimit(0.1f, 10.0f, newQ);
+        qTarget = jlimit (0.1f, 10.0f, newQ);
     }
 
     void setAmpdB (float newAmpdB)
@@ -290,15 +290,15 @@ private:
     float a0 = 1.0f;
     float a1 = 0.0f;
     float a2 = 0.0f;
-    
+
     int smoothingCount = 0;
     const int SAMPLESFORSMOOTHING = 256;
     void performSmoothing()
     {
         float alpha = 0.9999f;
         freqSmooth = alpha * freqSmooth + (1.f - alpha) * freqTarget;
-        qSmooth    = alpha * qSmooth    + (1.f - alpha) * qTarget;
-        
+        qSmooth = alpha * qSmooth + (1.f - alpha) * qTarget;
+
         smoothingCount++;
         if (smoothingCount >= SAMPLESFORSMOOTHING)
         {
@@ -306,7 +306,7 @@ private:
             smoothingCount = 0;
         }
     }
-    
+
     void updateCoefficients()
     {
         float A = std::pow (10.0f, ampdB / 40.0f);// Linear amplitude
@@ -550,7 +550,6 @@ public:
         mixLPF.reset (Fs, 0.001f);
         mixHPF.reset (Fs, 0.001f);
         setRateAndBufferSizeDetails (Fs, bufferSize);
-
     }
 
     //==============================================================================
@@ -670,7 +669,6 @@ private:
 
     SEMLowPassFilter lpf;
     SEMHighPassFilter hpf;
-    
 };
 
 }

@@ -17,15 +17,14 @@ ShimmerProcessor::ShimmerProcessor (int idNum)
                                                                        String txt (percentage);
                                                                        return txt << "%";
                                                                    });
-    
-    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On",true,
-                                                                 "FX On/Off ",
-                                                                 [] (bool value, int) -> String {
-                                                                     if (value > 0)
-                                                                         return TRANS("On");
-                                                                     return TRANS("Off");
-                                                                     ;
-                                                                 });
+
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> reverbAmountRange = { 0.f, 1 };
     auto reverbAmount = std::make_unique<NotifiableAudioParameterFloat> ("amount", "Reverb Filter Amount ", reverbAmountRange, 0.5,
@@ -44,8 +43,9 @@ ShimmerProcessor::ShimmerProcessor (int idNum)
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
-                                                                 [] (float value, int) -> String {
-                                                                     String txt (round (value * 100.f)/100.f);
+                                                                 [] (float value, int) -> String
+                                                                 {
+                                                                     String txt (round (value * 100.f) / 100.f);
                                                                      return txt;
                                                                      ;
                                                                  });
@@ -101,53 +101,43 @@ ShimmerProcessor::~ShimmerProcessor()
 void ShimmerProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
-    
+
     pitchShifter.setFs (static_cast<float> (Fs));
     pitchShifter.setPitch (12.f);
-    
-    effectBuffer = AudioBuffer<float> (2 , bufferSize);
-    
-    #if SQUAREPINE_USE_ELASTIQUE
 
-     const auto mode = useElastiquePro
-                         ? CElastiqueProV3If::kV3Pro
-                         : CElastiqueProV3If::kV3Eff;
+    effectBuffer = AudioBuffer<float> (2, bufferSize);
 
-     elastique = zplane::createElastiquePtr (bufferSize, 2, Fs, mode);
+#if SQUAREPINE_USE_ELASTIQUE
 
-     if (elastique == nullptr)
-     {
-         jassertfalse; // Something failed...
-     }
+    const auto mode = useElastiquePro
+                          ? CElastiqueProV3If::kV3Pro
+                          : CElastiqueProV3If::kV3Eff;
 
-     //updateRatio();
+    elastique = zplane::createElastiquePtr (bufferSize, 2, Fs, mode);
+
+    if (elastique == nullptr)
+    {
+        jassertfalse;// Something failed...
+    }
+
+    //updateRatio();
     elastique->Reset();
-    
+
     // "Reset()" also clears out the Stretch factor, so it needs to be reset
-    
-    auto pitchFactor = (float) std::clamp (2.0, 0.25, 4.0); // 2.0 = up an octave (double frequency)
+
+    auto pitchFactor = (float) std::clamp (2.0, 0.25, 4.0);// 2.0 = up an octave (double frequency)
     auto localRatio = (float) std::clamp (1.0, 0.01, 10.0);
     zplane::isValid (elastique->SetStretchPitchQFactor (localRatio, pitchFactor, useElastiquePro));
 
-//    const auto numSamplesToRead = elastique->GetFramesNeeded (static_cast<int>(bufferSize));
-//
-//    //inputAudio.clear();
-//    inputBuffer = AudioBuffer<float> (2 , numSamplesToRead);
-    outputBuffer = AudioBuffer<float> (2 , bufferSize);
-//    //outputAudio.clear();
-//
-//    auto inChannels = inputBuffer.getArrayOfReadPointers();
-//    auto outChannels = outputBuffer.getArrayOfWritePointers();
-//    zplane::isValid (elastique->ProcessData ((float**) inChannels, numSamplesToRead, outChannels));
-    
-    #endif
+    outputBuffer = AudioBuffer<float> (2, bufferSize);
+
+#endif
 }
 void ShimmerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
-    
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float wet;
     bool bypass;
     float depth;
@@ -156,42 +146,41 @@ void ShimmerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         time = timeParam->get();
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
         depth = xPadParam->get();
     }
-    
+
     if (bypass)
         return;
 
     //
-    const auto numSamplesToRead = elastique->GetFramesNeeded (static_cast<int>(numSamples));
-    
-    effectBuffer.setSize (2,numSamplesToRead, false, true, true);
-    
+    const auto numSamplesToRead = elastique->GetFramesNeeded (static_cast<int> (numSamples));
+
+    effectBuffer.setSize (2, numSamplesToRead, false, true, true);
+
     fillMultibandBuffer (buffer);
-    
-    for (int c = 0; c < numChannels ; ++c)
+
+    for (int c = 0; c < numChannels; ++c)
     {
         int index = numSamplesToRead - numSamples;
-        for (int n = 0; n < numSamples ; ++n)
+        for (int n = 0; n < numSamples; ++n)
         {
-            float x = multibandBuffer.getWritePointer(c) [n];
+            float x = multibandBuffer.getWritePointer (c)[n];
 
             float y = wetSmooth[c] * x;
 
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            
-            effectBuffer.getWritePointer(c) [index] = y;
+
+            effectBuffer.getWritePointer (c)[index] = y;
             ++index;
         }
-        
     }
-    
+
     auto inChannels = effectBuffer.getArrayOfReadPointers();
     auto outChannels = outputBuffer.getArrayOfWritePointers();
-    zplane::isValid (elastique->ProcessData ((float**) inChannels, numSamplesToRead, outChannels));
-    
-    auto** chans = outputBuffer.getArrayOfWritePointers();
+    zplane::isValid (elastique->ProcessData ((float**) inChannels, numSamplesToRead, (float**) outChannels));
+
+    auto chans = outputBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
 
@@ -208,12 +197,12 @@ void ShimmerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
         default:
             break;
     }
-    
+
     outputBuffer.applyGain (wet);
-    buffer.applyGain (1.f-wet);
-    
-    for (int c = 0; c < numChannels ; ++c)
-        buffer.addFrom (c,0,outputBuffer.getWritePointer(c),numSamples);
+    buffer.applyGain (1.f - wet);
+
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, outputBuffer.getWritePointer (c), numSamples);
 }
 
 const String ShimmerProcessor::getName() const { return TRANS ("Shimmer"); }
@@ -227,7 +216,7 @@ void ShimmerProcessor::parameterValueChanged (int id, float value)
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
     BandProcessor::parameterValueChanged (id, value);
-    
+
     Reverb::Parameters localParams;
 
     localParams.roomSize = timeParam->get();

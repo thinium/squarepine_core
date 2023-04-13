@@ -147,7 +147,8 @@ void FractionalDelay::clearDelay()
     }
 }
 
-DelayProcessor::DelayProcessor (int idNum): idNumber (idNum)
+DelayProcessor::DelayProcessor (int idNum)
+    : idNumber (idNum)
 {
     reset();
 
@@ -163,13 +164,14 @@ DelayProcessor::DelayProcessor (int idNum): idNumber (idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String {
-        if (value > 0)
-            return TRANS ("On");
-        return TRANS ("Off");
-        ;
-    });
-    
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
+
     NormalisableRange<float> timeRange = { 1.f, 4000.0f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("delayTime", "Delay Time", timeRange, 200.f,
                                                                  true,// isAutomatable
@@ -194,7 +196,7 @@ DelayProcessor::DelayProcessor (int idNum): idNumber (idNum)
 
     timeParam = time.get();
     timeParam->addListener (this);
-    
+
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
@@ -223,28 +225,25 @@ void DelayProcessor::prepareToPlay (double Fs, int bufferSize)
     wetDry.reset (Fs, 0.5f);
     delayTime.reset (Fs, 0.5f);
     setRateAndBufferSizeDetails (Fs, bufferSize);
-    
+
     sampleRate = static_cast<float> (Fs);
 }
 void DelayProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
-    //TODO
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    
     bool bypass;
     {
         const ScopedLock lock (getCallbackLock());
-        bypass = !fxOnParam->get();
-        //feedbackAmp = feedbackParam->get(); // appears to be constant from hardware demo
+        bypass = ! fxOnParam->get();
     }
-    
+
     if (bypass)
         return;
-    
+
     fillMultibandBuffer (buffer);
-    
+
     float dry, wet, x, y;
     for (int s = 0; s < numSamples; ++s)
     {
@@ -259,9 +258,9 @@ void DelayProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
             buffer.getWritePointer (c)[s] *= dry;
         }
     }
-    
+
     for (int c = 0; c < numChannels; ++c)
-        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }
 //============================================================================== House keeping
 const String DelayProcessor::getName() const { return TRANS ("Delay"); }
@@ -275,7 +274,7 @@ void DelayProcessor::parameterValueChanged (int paramIndex, float value)
     const ScopedLock sl (getCallbackLock());
 
     BandProcessor::parameterValueChanged (paramIndex, value);
-    
+
     switch (paramIndex)
     {
         case (1):
@@ -291,12 +290,11 @@ void DelayProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-            float samplesOfDelay = (value/1000.f) * sampleRate;
-            delayTime.setTargetValue(samplesOfDelay);
+            float samplesOfDelay = (value / 1000.f) * sampleRate;
+            delayTime.setTargetValue (samplesOfDelay);
             break;
         }
     }
-    
 }
 void DelayProcessor::releaseResources()
 {

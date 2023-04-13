@@ -35,14 +35,14 @@ private:
 
     int idNumber = 1;
 
-    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
-    
+    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime { 0.0f };
+
     FractionalDelay delayLeft;
     FractionalDelay delayRight;
-    
+
     float z = 0.f;
     float wetSmooth = 0.5f;
-    
+
     float Fs = 48000.f;
 };
 

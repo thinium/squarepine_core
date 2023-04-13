@@ -11,15 +11,15 @@ namespace djdawprocessor
 /// many of the FX are parallel effects where the multi-band processing is only on the effected
 /// signal. The TRANS effect is one where only the effected/wet signal is output when the extra
 /// parameter is at the max. I used this to analyze the low/mid/high. It appears to use Linkwitz-Riley
-/// filters with cut-offs at 300 Hz and 5 kHz. A recording of this was captured. 
+/// filters with cut-offs at 300 Hz and 5 kHz. A recording of this was captured.
 
 class TransEffectProcessor final : public BandProcessor
 {
 public:
     //Constructor with ID
     TransEffectProcessor (int idNum = 1);
-    ~TransEffectProcessor()override;
-    
+    ~TransEffectProcessor() override;
+
     //============================================================================== Audio processing
     void prepareToPlay (double Fs, int bufferSize) override;
     void processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override;
@@ -31,8 +31,7 @@ public:
     bool supportsDoublePrecisionProcessing() const override;
     //============================================================================== Parameter callbacks
     void parameterValueChanged (int paramNum, float value) override;
-    void parameterGestureChanged (int, bool) override{}
-    
+    void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     NotifiableAudioParameterFloat* timeParam = nullptr;
@@ -42,10 +41,10 @@ private:
     int idNumber = 1;
 
     PhaseIncrementer phase;
-    
-    float wetSmooth[2] = {0.0};
-    float ampSmooth[2] = {1.0};
-    float depthSmooth[2] = {1.0};
+
+    float wetSmooth[2] = { 0.0 };
+    float ampSmooth[2] = { 1.0 };
+    float depthSmooth[2] = { 1.0 };
 };
 
 }

@@ -35,12 +35,12 @@ private:
     Reverb reverb;
     PitchShifter pitchShifter;
     AudioBuffer<float> effectBuffer;
-    
-    float wetSmooth[2] = {0.f};
-    
+
+    float wetSmooth[2] = { 0.f };
+
     bool useElastiquePro = false;
     zplane::ElastiquePtr elastique;
-    
+
     AudioBuffer<float> inputBuffer;
     AudioBuffer<float> outputBuffer;
     

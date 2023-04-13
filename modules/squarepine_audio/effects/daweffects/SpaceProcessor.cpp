@@ -18,18 +18,22 @@ SpaceProcessor::SpaceProcessor (int idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String {
-        if (value > 0)
-            return TRANS ("On");
-        return TRANS ("Off");
-        ;
-    });
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> reverbRange = { -1.0, 1.0f };
     auto reverbColour = std::make_unique<NotifiableAudioParameterFloat> ("reverb colour", "Colour/Tone", reverbRange, 0.f,
                                                                          true,// isAutomatable
                                                                          "Colour ",
                                                                          AudioProcessorParameter::genericParameter,
+                                                                         [] (float value, int) -> String
+                                                                         {
+                                                                             String txt (std::round (100.f * value) / 100.f);
                                                                              return txt;
                                                                              ;
                                                                          });
@@ -39,7 +43,8 @@ SpaceProcessor::SpaceProcessor (int idNum)
                                                                   true,// isAutomatable
                                                                   "Length ",
                                                                   AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String {
+                                                                  [] (float value, int) -> String
+                                                                  {
                                                                       int percentage = roundToInt (value * 100);
                                                                       String txt (percentage);
                                                                       return txt << "%";
@@ -95,17 +100,17 @@ void SpaceProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
     }
-    
+
     if (bypass)
         return;
 
     updateReverbParams();
 
-    filter.processBuffer(buffer,midiBuffer);
-    
-    auto** chans = buffer.getArrayOfWritePointers();
+    filter.processBuffer (buffer, midiBuffer);
+
+    auto chans = buffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
 
@@ -122,7 +127,6 @@ void SpaceProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
         default:
             break;
     }
-    
 }
 
 const String SpaceProcessor::getName() const { return TRANS ("Space"); }
@@ -137,17 +141,17 @@ void SpaceProcessor::parameterValueChanged (int id, float value)
     {
         setBypass (value > 0);
     }
-    if (id == 3) // Color
+    if (id == 3)// Color
     {
         if (value > 0)
         {
-            filter.setFreq(5000.f);
-            filter.setAmpdB(value * 6.f);
+            filter.setFreq (5000.f);
+            filter.setAmpdB (value * 6.f);
         }
         else
         {
-            filter.setFreq(500.f);
-            filter.setAmpdB(-value * 6.f);
+            filter.setFreq (500.f);
+            filter.setAmpdB (-value * 6.f);
         }
     }
 }
@@ -163,7 +167,7 @@ void SpaceProcessor::updateReverbParams()
     Reverb::Parameters localParams;
 
     localParams.roomSize = otherParam->get();
-    localParams.damping = 0.5f; //1.f - reverbColourParam->get();
+    localParams.damping = 0.5f;//1.f - reverbColourParam->get();
     localParams.wetLevel = wetDryParam->get();
     localParams.dryLevel = 1.f - wetDryParam->get();
     localParams.width = 1;

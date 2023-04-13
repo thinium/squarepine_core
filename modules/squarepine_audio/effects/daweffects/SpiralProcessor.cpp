@@ -19,12 +19,13 @@ SpiralProcessor::SpiralProcessor (int idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String {
-        if (value > 0)
-            return TRANS ("On");
-        return TRANS ("Off");
-        ;
-    });
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> timeRange = { 10.f, 4000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
@@ -38,17 +39,6 @@ SpiralProcessor::SpiralProcessor (int idNum)
                                                                      ;
                                                                  });
 
-//    NormalisableRange<float> feedbackRange = { 0.f, 1.0f };
-//    auto feedback = std::make_unique<NotifiableAudioParameterFloat> ("feedback", "Feedback", feedbackRange, 0.5f,
-//                                                                     true,// isAutomatable
-//                                                                     "Feedback ",
-//                                                                     AudioProcessorParameter::genericParameter,
-//                                                                     [] (float value, int) -> String {
-//                                                                         int percentage = roundToInt (value * 100);
-//                                                                         String txt (percentage);
-//                                                                         return txt << "%";
-//                                                                     });
-    
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
@@ -58,27 +48,21 @@ SpiralProcessor::SpiralProcessor (int idNum)
     timeParam = time.get();
     timeParam->addListener (this);
 
-    //    feedbackParam = feedback.get();
-    //    feedbackParam->addListener (this);
-    
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
     layout.add (std::move (time));
-    //layout.add (std::move (feedback));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
-    
-    
+
     delayUnit.setDelaySamples (200 * 48);
-    
+
     hpf.setFilterType (DigitalFilter::FilterType::LSHELF);
     hpf.setFreq (2000.0f);
     hpf.setQ (0.3f);
-    hpf.setAmpdB(-3.0f);
-    
+    hpf.setAmpdB (-3.0f);
 }
 
 SpiralProcessor::~SpiralProcessor()
@@ -86,23 +70,21 @@ SpiralProcessor::~SpiralProcessor()
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
     timeParam->removeListener (this);
-    // feedbackParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
 void SpiralProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
-    
+
     delayUnit.setFs ((float) Fs);
     sampleRate = Fs;
 }
 void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
-    
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float wet;
     float dry;
     bool bypass;
@@ -110,17 +92,17 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         dry = 1.f - wet;
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
         float delayMS = timeParam->get();
-        float samplesOfDelay = delayMS/1000.f * static_cast<float> (sampleRate);
+        float samplesOfDelay = delayMS / 1000.f * static_cast<float> (sampleRate);
         delayUnit.setDelaySamples (samplesOfDelay);
     }
-    
+
     if (bypass)
         return;
-    
+
     fillMultibandBuffer (buffer);
-    
+
     float feedbackAmp = 0.4f;
     float inputAmp = 0.f;
     for (int c = 0; c < numChannels; ++c)
@@ -133,15 +115,14 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
             float x = multibandBuffer.getWritePointer (c)[s];
             float y = (z[c] * feedbackAmp) + inputAmp * x;
             float w = delayUnit.processSample (y, c);
-            w = hpf.processSample (w,c);
-            z[c] = (2.f/static_cast<float> (M_PI)) * std::atan(w * 2.f);
-            
-            multibandBuffer.getWritePointer(c) [s] = wetSmooth[c] * y;
+            w = hpf.processSample (w, c);
+            z[c] = (2.f / static_cast<float> (M_PI)) * std::atan (w * 2.f);
+
+            multibandBuffer.getWritePointer (c)[s] = wetSmooth[c] * y;
             buffer.getWritePointer (c)[s] *= inputAmp;
         }
-        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
     }
-        
 }
 
 const String SpiralProcessor::getName() const { return TRANS ("Spiral"); }

@@ -57,7 +57,6 @@ ReverbProcessor::ReverbProcessor (int idNum)
     timeParam = time.get();
     timeParam->addListener (this);
 
-
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
@@ -70,7 +69,7 @@ ReverbProcessor::ReverbProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
-    
+
     hpf.setFilterType (DigitalFilter::FilterType::HPF);
     hpf.setFreq (40.f);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
@@ -105,15 +104,15 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
         wet = wetDryParam->get();
         dry = 1.f - wetDryParam->get();
     }
-    
+
     updateReverbParams();
 
     fillMultibandBuffer (buffer);
-    auto** chans = multibandBuffer.getArrayOfWritePointers();
+    auto chans = multibandBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
 
@@ -130,15 +129,15 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         default:
             break;
     }
-    
+
     lpf.processBuffer (multibandBuffer, midi);
     hpf.processBuffer (multibandBuffer, midi);
-    
+
     multibandBuffer.applyGain (wet);
     buffer.applyGain (dry);
-    
+
     for (int c = 0; c < numChannels; ++c)
-        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }
 
 const String ReverbProcessor::getName() const { return TRANS ("Reverb"); }
@@ -155,19 +154,19 @@ void ReverbProcessor::parameterValueChanged (int id, float value)
     {
         setBypass (value > 0);
     }
-    if (id == 4) // filterParam
+    if (id == 4)// filterParam
     {
         if (value > 0.5f)
         {
             float normValue = 2.f * (value - 0.5f);
-            float freqHz = 4.f * std::powf(10.f, 2.f * normValue + 1.f); // 40 - 4000
+            float freqHz = 4.f * std::powf (10.f, 2.f * normValue + 1.f);// 40 - 4000
             hpf.setFreq (freqHz);
             lpf.setFreq (10000.f);
         }
         else
         {
             float normValue = value * 2.f;
-            float freqHz = std::powf(10.f,normValue + 3.f) ; // 10000 -> 2000
+            float freqHz = std::powf (10.f, normValue + 3.f);// 10000 -> 2000
             lpf.setFreq (freqHz);
             hpf.setFreq (40.f);
         }
@@ -186,9 +185,9 @@ void ReverbProcessor::updateReverbParams()
     Reverb::Parameters localParams;
 
     localParams.roomSize = timeParam->get();
-    localParams.damping = 1.f; // - filterParam->get();
-    localParams.wetLevel = 1.f; //wetDryParam->get();
-    localParams.dryLevel = 0.f; //1 - wetDryParam->get();
+    localParams.damping = 1.f;
+    localParams.wetLevel = 1.f;
+    localParams.dryLevel = 0.f;
     localParams.width = 1;
     localParams.freezeMode = 0;
 

@@ -18,13 +18,13 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<AudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
-                                                      {
-                                                          if (value > 0)
-                                                              return TRANS ("On");
-                                                          return TRANS ("Off");
-                                                          ;
-                                                      });
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
     auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
@@ -71,10 +71,10 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
-    
-    phase.setFrequency (1.f/(timeParam->get()/1000.f));
+
+    phase.setFrequency (1.f / (timeParam->get() / 1000.f));
     phaseWarble.setFrequency (3.f);
-    
+
     bpf.setFilterType (DigitalFilter::FilterType::BPF2);
     bpf.setQ (0.7071f);
 }
@@ -91,69 +91,66 @@ LFOFilterProcessor::~LFOFilterProcessor()
 void LFOFilterProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
-    
+
     const ScopedLock sl (getCallbackLock());
     bpf.setFs (Fs);
-    phase.prepare (Fs,bufferSize);
+    phase.prepare (Fs, bufferSize);
     phaseWarble.prepare (Fs, bufferSize);
 }
 void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float wet;
     bool bypass;
     float warble;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
         warble = xPadParam->get();
     }
-    
+
     if (bypass)
         return;
-    
+
     fillMultibandBuffer (buffer);
-    
+
     float lfoSample;
     float warbleSample;
     //
-    for (int c = 0; c < numChannels ; ++c)
+    for (int c = 0; c < numChannels; ++c)
     {
-        for (int n = 0; n < numSamples ; ++n)
+        for (int n = 0; n < numSamples; ++n)
         {
-            lfoSample = static_cast<float> (phase.getNextSample(c));
-            warbleSample = static_cast<float> (phaseWarble.getNextSample(c));
-            float x = multibandBuffer.getWritePointer(c) [n];
-            
-            
+            lfoSample = static_cast<float> (phase.getNextSample (c));
+            warbleSample = static_cast<float> (phaseWarble.getNextSample (c));
+            float x = multibandBuffer.getWritePointer (c)[n];
+
             if (count < UPDATEFILTERS)
-                count++; // we want to avoid re-calulating filters every sample
+                count++;// we want to avoid re-calulating filters every sample
             else
             {
-                float normLFO = 0.5f * sinf(lfoSample) + 0.5f;
-                float warbleLFO = 0.05f * warbleSmooth[c] * sinf(warbleSample);
+                float normLFO = 0.5f * sinf (lfoSample) + 0.5f;
+                float warbleLFO = 0.05f * warbleSmooth[c] * sinf (warbleSample);
                 float value = normLFO * 0.5f + 0.5f + warbleLFO;
-                float freqHz = 2.f * std::powf(10.f, (1.7f * value) + 2.f); // 200 - 10000
+                float freqHz = 2.f * std::powf (10.f, (1.7f * value) + 2.f);// 200 - 10000
                 bpf.setFreq (freqHz);
                 count = 0;
             }
-            
-            
-            
+
             float wetSample = static_cast<float> (bpf.processSample (x, c));
-            
+
             float y = wetSmooth[c] * wetSample;
-            
+
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
             warbleSmooth[c] = 0.999f * warbleSmooth[c] + 0.001f * warble;
             multibandBuffer.getWritePointer (c)[n] = y;
             buffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
         }
-        
-        buffer.addFrom (c, 0, multibandBuffer.getWritePointer(c), numSamples);
+
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
     }
 }
 
@@ -184,13 +181,12 @@ void LFOFilterProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-            phase.setFrequency (1.f/(value/1000.f));
-            break; // time
+            phase.setFrequency (1.f / (value / 1000.f));
+            break;// time
         }
         case (4):
         {
-            //depth = 20.0 * value;
-            break; // Modulation
+            break;// Modulation
         }
     }
 }

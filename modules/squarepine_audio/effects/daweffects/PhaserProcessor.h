@@ -98,12 +98,12 @@ private:
     DigitalFilter apf1;
     DigitalFilter apf2;
     DigitalFilter apf3;
-    
+
     int count = 0;
     static const int UPDATEFILTERS = 8;
-    
-    float wetSmooth[2] = {0.0};
-    float warbleSmooth[2] = {1.0};
+
+    float wetSmooth[2] = { 0.0 };
+    float warbleSmooth[2] = { 1.0 };
 };
 
 }

@@ -34,15 +34,15 @@ private:
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
-    
+
     double sampleRate = 44100.0;
-    
+
     SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
-    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
-    
+    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime { 0.0f };
+
     FractionalDelay delayUnit;
-    
-    float z[2] = {0.f};
+
+    float z[2] = { 0.f };
 };
 
 }

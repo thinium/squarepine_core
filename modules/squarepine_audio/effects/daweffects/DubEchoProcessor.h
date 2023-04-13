@@ -1,7 +1,7 @@
 
 namespace djdawprocessor
 {
-/// TODO: there seems to be subtle modulation of the delay.
+/// there seems to be subtle modulation of the delay.
 /// Extra parameter does several things. It controls feedback amount.
 /// It seems like when this parameter is less than 50%, it is increasing the
 /// feedback amount from ~one repeat to many. When the parameter is 50% or above,
@@ -47,18 +47,18 @@ private:
     AudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
-    
+
     double sampleRate = 48000.0;
-    
+
     FractionalDelay delayBlock;
-    float feedbackSample[2] = {0.f};
-    
+    float feedbackSample[2] = { 0.f };
+
     DigitalFilter hpf;
     DigitalFilter lpf;
-    
-    float gainSmooth[2] = {0.f};
+
+    float gainSmooth[2] = { 0.f };
     float gain;
-    float wetSmooth[2] = {0.f};
+    float wetSmooth[2] = { 0.f };
 };
 
 }

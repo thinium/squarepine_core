@@ -34,8 +34,9 @@ NoiseProcessor::NoiseProcessor (int idNum)
                                                                    true,// isAutomatable
                                                                    "Colour ",
                                                                    AudioProcessorParameter::genericParameter,
-                                                                   [] (float value, int) -> String {
-                                                                       String txt (round (100.f*value)/100.f);
+                                                                   [] (float value, int) -> String
+                                                                   {
+                                                                       String txt (round (100.f * value) / 100.f);
                                                                        return txt;
                                                                        ;
                                                                    });
@@ -48,7 +49,6 @@ NoiseProcessor::NoiseProcessor (int idNum)
     colourParam = colour.get();
     colourParam->addListener (this);
 
-
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
@@ -57,7 +57,7 @@ NoiseProcessor::NoiseProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (colourParam);
-    
+
     hpf.setFilterType (DigitalFilter::FilterType::HPF);
     hpf.setFreq (INITHPF);
     hpf.setQ (DEFAULTQ);
@@ -80,43 +80,40 @@ void NoiseProcessor::prepareToPlay (double Fs, int)
     hpf.setFs (sampleRate);
     lpf.setFs (sampleRate);
     generator.setSeedRandomly();
-    
 }
 void NoiseProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float wet;
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
     }
-    
+
     if (bypass)
         return;
-    
-    for (int c = 0; c < numChannels ; ++c)
+
+    for (int c = 0; c < numChannels; ++c)
     {
-        for (int n = 0; n < numSamples ; ++n)
+        for (int n = 0; n < numSamples; ++n)
         {
-            float x = buffer.getWritePointer(c) [n];
-            
-            
-            float noise = generator.nextFloat () - 0.5f; // range = -.5 to +.5
-        
-            auto filterNoise = hpf.processSample(noise,c);
-            filterNoise = lpf.processSample(filterNoise,c);
-            
+            float x = buffer.getWritePointer (c)[n];
+
+            float noise = generator.nextFloat() - 0.5f;// range = -.5 to +.5
+
+            auto filterNoise = hpf.processSample (noise, c);
+            filterNoise = lpf.processSample (filterNoise, c);
+
             float y = x + wetSmooth[c] * filterNoise;
-            
+
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            buffer.getWritePointer(c) [n] = y;
+            buffer.getWritePointer (c)[n] = y;
         }
     }
-    
 }
 
 const String NoiseProcessor::getName() const { return TRANS ("Noise"); }
@@ -136,14 +133,14 @@ void NoiseProcessor::parameterValueChanged (int paramIndex, float value)
             break;
         }
         case (2):
-        {    // Wet/dry (handled in processBlock)
+        {// Wet/dry (handled in processBlock)
             break;
         }
         case (3):
-        {    //Colour
+        {//Colour
             if (value > 0.f)
             {
-                float freqHz = std::powf(10.f, value * 3.2f + 1.f); // 10 - 16000
+                float freqHz = std::powf (10.f, value * 3.2f + 1.f);// 10 - 16000
                 hpf.setFreq (freqHz);
                 lpf.setFreq (INITLPF);
                 lpf.setQ (DEFAULTQ);
@@ -152,7 +149,7 @@ void NoiseProcessor::parameterValueChanged (int paramIndex, float value)
             else
             {
                 float normValue = 1.f + value;
-                float freqHz = 2.f * std::powf(10.f, normValue * 2.f + 2.f); // 20000 -> 200
+                float freqHz = 2.f * std::powf (10.f, normValue * 2.f + 2.f);// 20000 -> 200
                 lpf.setFreq (freqHz);
                 hpf.setFreq (INITHPF);
                 hpf.setQ (DEFAULTQ);
@@ -161,7 +158,6 @@ void NoiseProcessor::parameterValueChanged (int paramIndex, float value)
             break;
         }
     }
-    
 }
 
 }

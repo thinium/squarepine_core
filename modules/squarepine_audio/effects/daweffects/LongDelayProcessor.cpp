@@ -56,9 +56,6 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-//    colourParam = colour.get();
-//    colourParam->addListener (this);
-
     feedbackParam = feedback.get();
     feedbackParam->addListener (this);
 
@@ -68,15 +65,14 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    //layout.add (std::move (colour));
     layout.add (std::move (time));
     layout.add (std::move (feedback));
-    
+
     appendExtraParams (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
-    
+
     delayTime.setTargetValue (timeParam->get());
     wetDry.setTargetValue (wetDryParam->get());
 }
@@ -85,7 +81,6 @@ LongDelayProcessor::~LongDelayProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    //colourParam->removeListener (this);
     feedbackParam->removeListener (this);
     timeParam->removeListener (this);
 }
@@ -97,7 +92,7 @@ void LongDelayProcessor::prepareToPlay (double sampleRate, int)
     delayUnit.setFs (Fs);
     wetDry.reset (Fs, 0.5f);
     delayTime.reset (Fs, 0.5f);
-    delayUnit.setDelaySamples (delayTime.getNextValue()/1000.f * Fs);
+    delayUnit.setDelaySamples (delayTime.getNextValue() / 1000.f * Fs);
 }
 void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -108,24 +103,22 @@ void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     float feedback;
     {
         const ScopedLock sl (getCallbackLock());
-        bypass = !fxOnParam->get();
-        feedback = feedbackParam->get() * 0.75f; // max feedback gain is 0.75
+        bypass = ! fxOnParam->get();
+        feedback = feedbackParam->get() * 0.75f;// max feedback gain is 0.75
         float timeMS = timeParam->get();
-        float samplesOfDelay = timeMS/1000.f * Fs;
+        float samplesOfDelay = timeMS / 1000.f * Fs;
         delayTime.setTargetValue (samplesOfDelay);
         delayUnit.setDelaySamples (delayTime.getNextValue());
     }
-    
+
     if (bypass)
         return;
-    
+
     float dry, wet, x, y;
-    
-    
     for (int s = 0; s < numSamples; ++s)
     {
         wet = wetDry.getNextValue();
-        delayTime.getNextValue(); // continue smoothing
+        delayTime.getNextValue();// continue smoothing
         dry = 1.f - wet;
         for (int c = 0; c < numChannels; ++c)
         {
@@ -161,11 +154,10 @@ void LongDelayProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (3):
         {
-            
-            float samplesOfDelay = value/1000.f * Fs;
+            float samplesOfDelay = value / 1000.f * Fs;
             delayTime.setTargetValue (samplesOfDelay);
             delayUnit.setDelaySamples (samplesOfDelay);
-            
+
             break;
         }
         case (4):

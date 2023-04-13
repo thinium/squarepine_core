@@ -1,7 +1,7 @@
 namespace djdawprocessor
 {
-/// TODO: default is 2000ms
-/// TODO: Appears to be modulated LPF with a Q=4, 2nd-order, "level" is blend between wet/dry (true blend)
+/// default is 2000ms
+/// Appears to be modulated LPF with a Q=4, 2nd-order, "level" is blend between wet/dry (true blend)
 /// Delay time (min/max range) sync'd to tempo
 /// X-Pad appears to add an extra modulated warble sinewave to the frequency sweep. Essentially, as the
 // frequency sweeps across the spectrum at a relatively slow rate (2000 ms), there is another LFO that
@@ -37,16 +37,16 @@ private:
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
-    
+
     PhaseIncrementer phase;
     PhaseIncrementer phaseWarble;
     DigitalFilter bpf;
-    
+
     int count = 0;
     static const int UPDATEFILTERS = 8;
-    
-    float wetSmooth[2] = {0.0};
-    float warbleSmooth[2] = {5.0};
+
+    float wetSmooth[2] = { 0.0 };
+    float warbleSmooth[2] = { 5.0 };
 };
 
 }

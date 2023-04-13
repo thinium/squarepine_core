@@ -63,7 +63,8 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
                                                                   true,// isAutomatable
                                                                   "Speed ",
                                                                   AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String {
+                                                                  [] (float value, int) -> String
+                                                                  {
                                                                       int percentage = roundToInt (value * 100);
                                                                       String txt (percentage);
                                                                       return txt << "%";
@@ -77,7 +78,7 @@ VinylBreakProcessor::VinylBreakProcessor (int idNum)
 
     timeParam = time.get();
     timeParam->addListener (this);
-    
+
     speedParam = speed.get();
     speedParam->addListener (this);
 
@@ -104,47 +105,45 @@ VinylBreakProcessor::~VinylBreakProcessor()
 void VinylBreakProcessor::prepareToPlay (double sampleRate, int bufferSize)
 {
     Fs = static_cast<float> (sampleRate);
-    
+
     float time = timeParam->get() / 1000.f;
-    float speed = jmax(speedParam->get(),0.3f);
-    alpha = std::exp(-std::log(9.f)/(Fs * time * speed));
+    float speed = jmax (speedParam->get(), 0.3f);
+    alpha = std::exp (-std::log (9.f) / (Fs * time * speed));
     pitchFactorTarget = 0.f;
     pitchFactorSmooth = 1.f;
-    
+
     BandProcessor::prepareToPlay (sampleRate, bufferSize);
-    
-    effectBuffer = AudioBuffer<float> (2 , bufferSize);
-    
-    #if SQUAREPINE_USE_ELASTIQUE
 
-     const auto mode = useElastiquePro
-                         ? CElastiqueProV3If::kV3Pro
-                         : CElastiqueProV3If::kV3Eff;
+    effectBuffer = AudioBuffer<float> (2, bufferSize);
 
-     elastique = zplane::createElastiquePtr (bufferSize, 2, sampleRate, mode);
+#if SQUAREPINE_USE_ELASTIQUE
 
-     if (elastique == nullptr)
-     {
-         jassertfalse; // Something failed...
-     }
+    const auto mode = useElastiquePro
+                          ? CElastiqueProV3If::kV3Pro
+                          : CElastiqueProV3If::kV3Eff;
+
+    elastique = zplane::createElastiquePtr (bufferSize, 2, sampleRate, mode);
+
+    if (elastique == nullptr)
+    {
+        jassertfalse;// Something failed...
+    }
 
     elastique->Reset();
-    
-    
-    auto pitchFactor = (float) std::clamp (1.0, 0.25, 4.0); // 2.0 = up an octave (double frequency)
+
+    auto pitchFactor = (float) std::clamp (1.0, 0.25, 4.0);// 2.0 = up an octave (double frequency)
     auto localRatio = (float) std::clamp (1.0, 0.01, 10.0);
     zplane::isValid (elastique->SetStretchPitchQFactor (localRatio, pitchFactor, useElastiquePro));
 
-    outputBuffer = AudioBuffer<float> (2 , bufferSize);
-    
-    #endif
+    outputBuffer = AudioBuffer<float> (2, bufferSize);
+
+#endif
 }
 void VinylBreakProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
-    
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float wet;
     float dry;
     bool bypass;
@@ -152,53 +151,51 @@ void VinylBreakProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, M
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         dry = 1.f - wet;
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
     }
-    
+
     if (bypass)
         return;
-    
+
     fillMultibandBuffer (buffer);
-    
-    for (int n = 0; n < numSamples ; ++n)
+
+    for (int n = 0; n < numSamples; ++n)
     {
-        pitchFactorSmooth = alpha * pitchFactorSmooth + (1.f-alpha) * pitchFactorTarget;
+        pitchFactorSmooth = alpha * pitchFactorSmooth + (1.f - alpha) * pitchFactorTarget;
     }
     elastique->SetStretchPitchQFactor (1.f, pitchFactorSmooth, useElastiquePro);
-    
-    const auto numSamplesToRead = elastique->GetFramesNeeded (static_cast<int>(numSamples));
-    
-    effectBuffer.setSize (2,numSamplesToRead, false, true, true);
-    
-    for (int c = 0; c < numChannels ; ++c)
+
+    const auto numSamplesToRead = elastique->GetFramesNeeded (static_cast<int> (numSamples));
+
+    effectBuffer.setSize (2, numSamplesToRead, false, true, true);
+
+    for (int c = 0; c < numChannels; ++c)
     {
         int index = numSamplesToRead - numSamples;
-        for (int n = 0; n < numSamples ; ++n)
+        for (int n = 0; n < numSamples; ++n)
         {
-            float x = multibandBuffer.getWritePointer(c) [n];
-            multibandBuffer.getWritePointer(c) [n] = (1.f-wetSmooth[c]) * x;
-            
+            float x = multibandBuffer.getWritePointer (c)[n];
+            multibandBuffer.getWritePointer (c)[n] = (1.f - wetSmooth[c]) * x;
+
             float y = wetSmooth[c] * x;
 
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            
-            effectBuffer.getWritePointer(c) [index] = y;
-            buffer.getWritePointer(c) [n] *= (1.f - wetSmooth[c]);
-            
+
+            effectBuffer.getWritePointer (c)[index] = y;
+            buffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
+
             ++index;
         }
-        
     }
-    
+
     auto inChannels = effectBuffer.getArrayOfReadPointers();
     auto outChannels = outputBuffer.getArrayOfWritePointers();
-    zplane::isValid (elastique->ProcessData ((float**) inChannels, numSamplesToRead, outChannels));
+    zplane::isValid (elastique->ProcessData ((float**) inChannels, numSamplesToRead, (float**) outChannels));
 
     const ScopedLock sl (getCallbackLock());
-    
-    for (int c = 0; c < numChannels ; ++c)
-        buffer.addFrom (c,0,outputBuffer.getWritePointer(c),numSamples);
-    
+
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, outputBuffer.getWritePointer (c), numSamples);
 }
 
 const String VinylBreakProcessor::getName() const { return TRANS ("Vinyl Break"); }
@@ -214,7 +211,7 @@ void VinylBreakProcessor::parameterValueChanged (int id, float value)
 
     //Subtract the number of new parameters in this processor
     BandProcessor::parameterValueChanged (id, value);
-    
+
     const ScopedLock sl (getCallbackLock());
     switch (id)
     {
@@ -230,24 +227,20 @@ void VinylBreakProcessor::parameterValueChanged (int id, float value)
             {
                 pitchFactorTarget = 0.f;
                 float time = timeParam->get() / 1000.f;
-                float speed = jmax(speedParam->get(),0.3f);
-                alpha = std::exp(-std::log(9.f)/(Fs * time * speed));
+                float speed = jmax (speedParam->get(), 0.3f);
+                alpha = std::exp (-std::log (9.f) / (Fs * time * speed));
             }
             break;
         }
         case (2):
         {
-            
             break;
         }
         case (3):
         {
-            
             float time = value / 1000.f;
-            float speed = jmax(speedParam->get(),0.3f);
-            alpha = std::exp(-std::log(9.f)/(Fs * time * speed));
-            //pitchFactorTarget = 1.f-value;
-            //elastique->SetStretchPitchQFactor (1.f, pitchFactor, useElastiquePro);
+            float speed = jmax (speedParam->get(), 0.3f);
+            alpha = std::exp (-std::log (9.f) / (Fs * time * speed));
 
             break;
         }
@@ -263,8 +256,8 @@ void VinylBreakProcessor::parameterValueChanged (int id, float value)
             {
                 pitchFactorTarget = 0.f;
                 float time = timeParam->get() / 1000.f;
-                value = jmax(value,0.3f);
-                alpha = std::exp(-std::log(9.f)/(Fs * time * value));
+                value = jmax (value, 0.3f);
+                alpha = std::exp (-std::log (9.f) / (Fs * time * value));
             }
             break;
         }

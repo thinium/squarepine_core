@@ -98,29 +98,39 @@ void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
 {
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    
+
     float wet = 0.5f;
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
     }
-        
+
     if (bypass)
         return;
-    
-    for (int c = 0 ; c < numChannels ; ++c)
+
+    for (int c = 0; c < numChannels; ++c)
     {
         dryBuffer.copyFrom (c, 0, buffer, c, 0, buffer.getNumSamples());
     }
     bitCrusher.processBlock (buffer, midi);
     highPassFilter.processBuffer (buffer, midi);
-    buffer.applyGain (wet);
-    dryBuffer.applyGain (1.f - wet);
 
-    for (int c = 0; c < buffer.getNumChannels(); ++c)
+    for (int c = 0; c < numChannels; ++c)
     {
+        for (int n = 0; n < numSamples; ++n)
+        {
+            float x = buffer.getWritePointer (c)[n];
+
+            float wetSample = delayBlock.processSample (x, c);
+
+            //float y = x + wetSmooth[c] * wetSample;
+            buffer.getWritePointer (c)[n] = wetSmooth[c] * wetSample * colorSmooth[c];
+            dryBuffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            colorSmooth[c] = 0.999f * colorSmooth[c] + 0.001f * colorSign;
+        }
         buffer.addFrom (c, 0, dryBuffer, c, 0, buffer.getNumSamples());
     }
 }
@@ -138,9 +148,8 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
     if (paramNum == 2) {}// wet/dry
     else if (paramNum == 3) // "color"
     {
-        
         float other = otherParam->get();
-        float samplesOfDelay = jmin(15.f, 1.f + abs(value) * 10.f + other * 10.f);
+        float samplesOfDelay = jmin (15.f, 1.f + abs (value) * 10.f + other * 10.f);
         delayBlock.setDelaySamples (samplesOfDelay);
         if (value <= 0.f)
         {
@@ -148,7 +157,7 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
             float normValue = (value * -1.f);
             // 4 bits -> normValue = 0
             // 9 bits -> normValue = 1
-            float bitDepth = 5.f * std::sqrt(1.f - normValue) + 5.f;
+            float bitDepth = 5.f * std::sqrt (1.f - normValue) + 4.f;
             bitCrusher.setBitDepth (bitDepth);
             colorSign = 1.f;
         }
@@ -160,15 +169,15 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
             highPassFilter.setFreq (freqHz);
             // 9 bits -> value = 0.5, normValue = 0
             // 4 bits -> value = 1, normValue = 0
-            float bitDepth = 5.f * std::sqrt(1.f - normValue) + 5.f;
+            float bitDepth = 5.f * std::sqrt (1.f - normValue) + 4.f;
             bitCrusher.setBitDepth (bitDepth);
             colorSign = -1.f;
         }
     }
-    else if (paramNum == 4) // "other"
+    else if (paramNum == 4)// "other"
     {
         float color = colourParam->get();
-        float samplesOfDelay = jmin(15.f, 1.f + value * 10.f + abs(color) * 10.f);
+        float samplesOfDelay = jmin (15.f, 1.f + value * 10.f + abs (color) * 10.f);
         delayBlock.setDelaySamples (samplesOfDelay);
     }
 }

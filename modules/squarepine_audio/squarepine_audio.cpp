@@ -45,16 +45,13 @@ String getInternalProcessorTypeName()
 #include "dsp/LFO.cpp"
 #include "dsp/PitchDelay.cpp"
 #include "dsp/PitchShifter.cpp"
-#include "effects/InsertProcessor.cpp"
 #include "effects/ADSRProcessor.cpp"
 #include "effects/BitCrusherProcessor.cpp"
 #include "effects/ChorusProcessor.cpp"
 #include "effects/DitherProcessor.cpp"
 #include "effects/HissingProcessor.cpp"
-#include "effects/LimiterProcessor.cpp"
 #include "effects/JUCEReverbProcessor.cpp"
 #include "effects/LevelsProcessor.cpp"
-#include "effects/LFOProcessor.cpp"
 #include "effects/MuteProcessor.cpp"
 #include "effects/PanProcessor.cpp"
 #include "effects/PolarityInversionProcessor.cpp"
@@ -110,5 +107,5 @@ String getInternalProcessorTypeName()
 #include "effects/daweffects/EffectiveTempoProcessor.cpp"
 #include "effects/daweffects/VariableBPMProcessor.cpp"
 #include "effects/daweffects/EQProcessor.cpp"
-
+#include "effects/daweffects/LimiterProcessor.cpp"
 }

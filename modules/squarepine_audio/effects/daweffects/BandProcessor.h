@@ -14,7 +14,7 @@ public:
 
     void prepareToPlay (double Fs, int bufferSize) override;
     void processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi) override;
-    
+
     void fillMultibandBuffer (juce::AudioBuffer<float>& buffer);
 
     //The abstract function wherein inhereted classes should perform their DSP
@@ -29,16 +29,15 @@ protected:
     virtual void parameterValueChanged (int paramNum, float value) override;
 protected:
     AudioBuffer<float> multibandBuffer;
-    
 private:
     AudioParameterBool *lowFrequencyToggleParam, *midFrequencyToggleParam, *highFrequencyToggleParam;
-    
+
     static constexpr float lowCutoff = 300.f;
     static constexpr float highCutoff = 5000.f;
-    CrossoverFilter lowbandFilter {DigitalFilter::FilterType::LPF, lowCutoff};
-    CrossoverBPF midbandFilter {lowCutoff, highCutoff};
-    CrossoverFilter highbandFilter {DigitalFilter::FilterType::HPF, highCutoff};
-    
+    CrossoverFilter lowbandFilter { DigitalFilter::FilterType::LPF, lowCutoff };
+    CrossoverBPF midbandFilter { lowCutoff, highCutoff };
+    CrossoverFilter highbandFilter { DigitalFilter::FilterType::HPF, highCutoff };
+
     AudioBuffer<float> tempBuffer;
 };
 

@@ -30,18 +30,18 @@ private:
 
     double sampleRate = 0.0;
     int delayTimeInSamples = 0;
-    
+
     AudioBuffer<float> segmentBuffer;
     int segmentFillIndex = 0;
     int segmentPlayIndex = 0;
     int maxSegmentIndex = 0;
     bool fillSegmentFlag = false;
-    void fillSegmentBuffer (AudioBuffer<float> & buffer);
-  
-    AudioBuffer<float> tempBuffer; // used to multiband processing
-    void fillTempBuffer ();
-    
-    float wetSmooth[2] = {0.0};
+    void fillSegmentBuffer (AudioBuffer<float>& buffer);
+
+    AudioBuffer<float> tempBuffer;// used to multiband processing
+    void fillTempBuffer();
+
+    float wetSmooth[2] = { 0.0 };
 };
 
 }

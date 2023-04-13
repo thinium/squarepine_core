@@ -20,8 +20,8 @@ class PitchProcessor final : public BandProcessor
 public:
     //Constructor with ID
     PitchProcessor (int idNum = 1);
-    ~PitchProcessor()override;
-    
+    ~PitchProcessor() override;
+
     //============================================================================== Audio processing
     void prepareToPlay (double Fs, int bufferSize) override;
     void processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override;
@@ -33,28 +33,25 @@ public:
     bool supportsDoublePrecisionProcessing() const override;
     //============================================================================== Parameter callbacks
     void parameterValueChanged (int paramNum, float value) override;
-    void parameterGestureChanged (int, bool) override{}
-    
+    void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     NotifiableAudioParameterFloat* pitchParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
-    
     int idNumber = 1;
 
- 
     PitchShifter pitchShifter;
     AudioBuffer<float> effectBuffer;
-    
-    float wetSmooth[2] = {0.f};
-    
+
+    float wetSmooth[2] = { 0.f };
+
     bool useElastiquePro = false;
     zplane::ElastiquePtr elastique;
     float pitchFactorTarget = 1.f;
     float pitchFactorSmooth = 1.f;
-    
+
     AudioBuffer<float> inputBuffer;
     AudioBuffer<float> outputBuffer;
 };

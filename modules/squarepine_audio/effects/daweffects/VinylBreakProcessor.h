@@ -39,19 +39,19 @@ private:
     NotifiableAudioParameterBool* fxOnParam = nullptr;
     
     float Fs = 44100.f;
-    
+
     int idNumber = 1;
 
     AudioBuffer<float> effectBuffer;
-    
-    float wetSmooth[2] = {0.f};
-    
+
+    float wetSmooth[2] = { 0.f };
+
     bool useElastiquePro = false;
     zplane::ElastiquePtr elastique;
     float pitchFactorTarget = 1.f;
     float pitchFactorSmooth = 1.f;
     float alpha = 0.99f;
-    
+
     AudioBuffer<float> inputBuffer;
     AudioBuffer<float> outputBuffer;
 };

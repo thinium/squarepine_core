@@ -128,14 +128,12 @@ String getInternalProcessorTypeName();
 #include "dsp/PitchDelay.h"
 #include "dsp/PitchShifter.h"
 #include "effects/PhaseIncrementer.h"
-#include "effects/CrossoverFilter.h"
 #include "effects/ADSRProcessor.h"
 #include "effects/BitCrusherProcessor.h"
 #include "effects/ChorusProcessor.h"
 #include "effects/DitherProcessor.h"
 #include "effects/HissingProcessor.h"
-#include "effects/TruePeakAnalysis.h"
-#include "effects/LimiterProcessor.h"
+#include "effects/TruePeakAnalysis.h
 #include "effects/JUCEReverbProcessor.h"
 #include "effects/LevelsProcessor.h"
 #include "effects/LFOProcessor.h"
@@ -172,10 +170,11 @@ String getInternalProcessorTypeName();
 #include "effects/daweffects/SwitchableTimeParameter.h"
 #include "effects/daweffects/GainProcessor.h"
 #include "effects/daweffects/SEMFilter.h"
+#include "effects/daweffects/CrossoverFilter.h"
+#include "effects/daweffects/BandProcessor.h"
+#include "effects/daweffects/DelayProcessor.h"
 #include "effects/daweffects/CrushProcessor.h"
 #include "effects/daweffects/InsertProcessor.h"
-#include "effects/daweffects/DelayProcessor.h"
-#include "effects/daweffects/BandProcessor.h"
 #include "effects/daweffects/EchoProcessor.h"
 #include "effects/daweffects/PingPongProcessor.h"
 #include "effects/daweffects/SpiralProcessor.h"
@@ -201,10 +200,9 @@ String getInternalProcessorTypeName();
 #include "effects/daweffects/EffectiveTempoProcessor.h"
 #include "effects/daweffects/VariableBPMProcessor.h"
 #include "effects/daweffects/EQProcessor.h"
-
+#include "effects/daweffects/LimiterProcessor.h"
 
 }
-
 
 //==============================================================================
 namespace juce
