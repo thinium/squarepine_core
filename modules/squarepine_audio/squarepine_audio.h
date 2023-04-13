@@ -133,7 +133,6 @@ String getInternalProcessorTypeName();
 #include "effects/ChorusProcessor.h"
 #include "effects/DitherProcessor.h"
 #include "effects/HissingProcessor.h"
-#include "effects/TruePeakAnalysis.h
 #include "effects/JUCEReverbProcessor.h"
 #include "effects/LevelsProcessor.h"
 #include "effects/LFOProcessor.h"
@@ -165,8 +164,8 @@ String getInternalProcessorTypeName();
 #include "wrappers/AudioSourceProcessor.h"
 #include "wrappers/AudioTransportProcessor.h"
 //==============================================================================
-#include "effects/daweffects/NotifiableAudioParameterFloat.h"
-#include "effects/daweffects/NotifiableAudioParameterBool.h"
+#include "effects/NotifiableAudioParameterFloat.h"
+#include "effects/NotifiableAudioParameterBool.h"
 #include "effects/daweffects/SwitchableTimeParameter.h"
 #include "effects/daweffects/GainProcessor.h"
 #include "effects/daweffects/SEMFilter.h"
@@ -200,6 +199,7 @@ String getInternalProcessorTypeName();
 #include "effects/daweffects/EffectiveTempoProcessor.h"
 #include "effects/daweffects/VariableBPMProcessor.h"
 #include "effects/daweffects/EQProcessor.h"
+#include "effects/daweffects/TruePeakAnalysis.h"
 #include "effects/daweffects/LimiterProcessor.h"
 
 }

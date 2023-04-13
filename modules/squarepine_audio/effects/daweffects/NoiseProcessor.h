@@ -48,7 +48,4 @@ private:
     Random generator; // Based on "dither" class
 };
 
-    Random generator;// Based on "dither" class
-};
-
 }

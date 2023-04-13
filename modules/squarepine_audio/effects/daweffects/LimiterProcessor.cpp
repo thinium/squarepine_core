@@ -1,6 +1,8 @@
 //
 //  LimiterProcessor.cpp
 //
+namespace djdawprocessor
+{
 
 LimiterProcessor::LimiterProcessor()
 {
@@ -564,4 +566,6 @@ void LimiterProcessor::processAutoComp (AudioBuffer<float>& buffer, AudioBuffer<
         delayedBuffer.getWritePointer (0)[n] *= linGain;// Apply to input signal for left channel
         delayedBuffer.getWritePointer (1)[n] *= linGain;// Apply to input signal for right channel
     }
+}
+
 }

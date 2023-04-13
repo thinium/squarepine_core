@@ -1,3 +1,6 @@
+namespace djdawprocessor
+{
+
 class SwitchableTimeParameter : public AudioParameterBool
 {
 public:
@@ -46,3 +49,5 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     AudioParameterChoice* beatParam = nullptr;
 };
+
+}

@@ -1,6 +1,8 @@
 //
 //  LimiterProcessor.h
 //
+namespace djdawprocessor
+{
 
 class LimiterProcessor
 {
@@ -123,3 +125,5 @@ private:
     // Because this variable needs to be saved from the previous loop for L&R, then it is an array
     float acGainSmoothPrev = 0.f; // Variable for smoothing on dB scale
 };
+
+}

@@ -118,9 +118,6 @@ void RollProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
 
             multibandBuffer.getWritePointer (c)[n] *= wetSmooth[c];
             buffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
-            float test1 = multibandBuffer.getWritePointer (c)[n];
-            float test2 = buffer.getWritePointer (c)[n];
-            float test3 = 1.f;
         }
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
     }

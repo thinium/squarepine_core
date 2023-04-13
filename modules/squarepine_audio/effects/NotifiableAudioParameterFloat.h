@@ -1,3 +1,6 @@
+//namespace djdawprocessor
+//{
+
 class NotifiableAudioParameterFloat : public AudioParameterFloat
 {
 public:
@@ -44,3 +47,5 @@ protected:
 private:
     bool automatable;
 };
+
+//}

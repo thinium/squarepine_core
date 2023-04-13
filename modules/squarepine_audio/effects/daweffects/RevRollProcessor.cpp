@@ -1,3 +1,6 @@
+namespace djdawprocessor
+{
+
 RevRollProcessor::RevRollProcessor (int idNum)
     : idNumber (idNum)
 {
@@ -232,4 +235,6 @@ void RevRollProcessor::fillTempBuffer()
             }
         }
     }
+}
+
 }
