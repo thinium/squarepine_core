@@ -6,7 +6,8 @@
 // Implements a polyphase filter for 4x oversampling
 
 
-#pragma once
+namespace djdawprocessor
+{
 
 
 class TruePeakAnalysis
@@ -137,3 +138,5 @@ private:
     };
 
 };
+
+}

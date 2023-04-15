@@ -164,8 +164,8 @@ String getInternalProcessorTypeName();
 #include "wrappers/AudioSourceProcessor.h"
 #include "wrappers/AudioTransportProcessor.h"
 //==============================================================================
-#include "effects/NotifiableAudioParameterFloat.h"
-#include "effects/NotifiableAudioParameterBool.h"
+#include "effects/daweffects/NotifiableAudioParameterFloat.h"
+#include "effects/daweffects/NotifiableAudioParameterBool.h"
 #include "effects/daweffects/SwitchableTimeParameter.h"
 #include "effects/daweffects/GainProcessor.h"
 #include "effects/daweffects/SEMFilter.h"
