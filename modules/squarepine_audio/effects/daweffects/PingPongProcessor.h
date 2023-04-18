@@ -5,8 +5,6 @@ namespace djdawprocessor
 /// Stereo, alternative echo
 /// There is some galluping pattern, see manual for hints.
 /// XPad is sync'd delay time
-namespace djdawprocessor
-{
 
 class PingPongProcessor final : public BandProcessor
 {

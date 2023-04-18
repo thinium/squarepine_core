@@ -1,9 +1,6 @@
 namespace djdawprocessor
 {
 
-namespace djdawprocessor
-{
-
 /// This appears to be a pitch shifting effect down. I guess it is supposed to simulate
 /// what happens if a DJ stops a turn table. The time it takes for the "slow-down" or "brake"
 /// seems to be based on the sync'd "time" and XPAD (both control similar time parameter).
