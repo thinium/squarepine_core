@@ -91,7 +91,7 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
         bypass = !fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);

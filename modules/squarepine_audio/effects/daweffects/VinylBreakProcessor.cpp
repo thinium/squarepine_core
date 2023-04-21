@@ -141,7 +141,7 @@ void VinylBreakProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, M
         bypass = ! fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);

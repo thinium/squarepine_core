@@ -119,7 +119,7 @@ void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         warble = xPadParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);

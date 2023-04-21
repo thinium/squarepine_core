@@ -107,7 +107,7 @@ void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
         bypass = ! fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     for (int c = 0; c < numChannels; ++c)

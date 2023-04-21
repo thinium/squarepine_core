@@ -150,10 +150,9 @@ void ShimmerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
         depth = xPadParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
-    //
     const auto numSamplesToRead = elastique->GetFramesNeeded (static_cast<int> (numSamples));
 
     effectBuffer.setSize (2, numSamplesToRead, false, true, true);

@@ -122,7 +122,7 @@ void SweepProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
         colour = colourParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     if (colour > 0)

@@ -239,7 +239,7 @@ void DelayProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
         bypass = ! fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);

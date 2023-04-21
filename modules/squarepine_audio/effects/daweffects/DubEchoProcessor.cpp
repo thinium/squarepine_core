@@ -129,7 +129,7 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
         bypass = ! fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     for (int c = 0; c < numChannels; ++c)

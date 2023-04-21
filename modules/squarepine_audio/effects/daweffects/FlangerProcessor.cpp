@@ -112,7 +112,7 @@ void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
         warble = xPadParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);

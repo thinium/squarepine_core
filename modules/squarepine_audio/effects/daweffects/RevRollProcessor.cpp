@@ -100,7 +100,7 @@ void RevRollProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
         bypass = ! fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     if (fillSegmentFlag)

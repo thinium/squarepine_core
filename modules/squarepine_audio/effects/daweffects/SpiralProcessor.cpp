@@ -98,7 +98,7 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         delayUnit.setDelaySamples (samplesOfDelay);
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);

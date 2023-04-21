@@ -103,7 +103,7 @@ void SpaceProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
         bypass = ! fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     updateReverbParams();

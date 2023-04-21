@@ -111,7 +111,7 @@ void LongDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuf
         delayUnit.setDelaySamples (delayTime.getNextValue());
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     float dry, wet, x, y;

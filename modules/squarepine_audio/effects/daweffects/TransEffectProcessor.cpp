@@ -91,7 +91,7 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
         bypass = ! fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);

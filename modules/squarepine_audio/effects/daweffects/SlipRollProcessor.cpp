@@ -103,7 +103,7 @@ void SlipRollProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
         bypass = ! fxOnParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     if (fillSegmentFlag)

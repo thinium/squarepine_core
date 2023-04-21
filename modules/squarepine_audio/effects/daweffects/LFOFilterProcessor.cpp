@@ -112,7 +112,7 @@ void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mi
         warble = xPadParam->get();
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);

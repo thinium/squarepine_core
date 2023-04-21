@@ -109,7 +109,7 @@ void ShortDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBu
         delayUnit.setDelaySamples (delayTime.getNextValue());
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     float dry, wet, x, y;

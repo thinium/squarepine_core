@@ -119,7 +119,7 @@ void HelixProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
         delayUnit.setDelaySamples (samplesOfDelay);
     }
 
-    if (bypass)
+    if (bypass || isBypassed())
         return;
 
     fillMultibandBuffer (buffer);
