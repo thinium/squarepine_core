@@ -24,8 +24,8 @@ ReverbProcessor::ReverbProcessor (int idNum)
                                                           ;
                                                       });
 
-    NormalisableRange<float> reverbAmountRange = { 0.f, 1 };
-    auto reverbAmount = std::make_unique<NotifiableAudioParameterFloat> ("amount", "Reverb Amount ", reverbAmountRange, 0.5,
+    NormalisableRange<float> filterRange = { 0.f, 1 };
+    auto filterAmount = std::make_unique<NotifiableAudioParameterFloat> ("amount", "Filter Amount ", filterRange, 0.5,
                                                                          true,// isAutomatable
                                                                          "Reverb Filter Amount ",
                                                                          AudioProcessorParameter::genericParameter,
@@ -48,28 +48,14 @@ ReverbProcessor::ReverbProcessor (int idNum)
                                                                      return txt << "%";
                                                                  });
 
-    NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "Cutoff", otherRange, 3,
-                                                                  true,// isAutomatable
-                                                                  "X Pad Division ",
-                                                                  AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String
-                                                                  {
-                                                                      String txt (roundToInt (value));
-                                                                      return txt;
-                                                                  });
-
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
-    reverbAmountParam = reverbAmount.get();
-    reverbAmountParam->addListener (this);
+    filterParam = filterAmount.get();
+    filterParam->addListener (this);
 
     timeParam = time.get();
     timeParam->addListener (this);
-
-    xPadParam = other.get();
-    xPadParam->addListener (this);
 
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
@@ -77,22 +63,25 @@ ReverbProcessor::ReverbProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (reverbAmount));
     layout.add (std::move (time));
-    layout.add (std::move (other));
+    layout.add (std::move (filterAmount));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+
+    hpf.setFilterType (DigitalFilter::FilterType::HPF);
+    hpf.setFreq (40.f);
+    lpf.setFilterType (DigitalFilter::FilterType::LPF);
+    lpf.setFreq (10000.f);
 }
 
 ReverbProcessor::~ReverbProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    reverbAmountParam->removeListener (this);
+    filterParam->removeListener (this);
     timeParam->removeListener (this);
-    xPadParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
@@ -102,21 +91,28 @@ void ReverbProcessor::prepareToPlay (double Fs, int bufferSize)
     BandProcessor::prepareToPlay (Fs, bufferSize);
     reverb.reset();
     reverb.setSampleRate (Fs);
+    hpf.setFs (Fs);
+    lpf.setFs (Fs);
 }
-void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
+void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    if (isBypassed()
-        || buffer.hasBeenCleared()
-        || numChannels <= 0
-        || numSamples <= 0)
-        return;
+    float wet;
+    float dry;
+    bool bypass;
+    {
+        const ScopedLock sl (getCallbackLock());
+        bypass = ! fxOnParam->get();
+        wet = wetDryParam->get();
+        dry = 1.f - wetDryParam->get();
+    }
 
     updateReverbParams();
 
-    auto chans = buffer.getArrayOfWritePointers();
+    fillMultibandBuffer (buffer);
+    auto chans = multibandBuffer.getArrayOfWritePointers();
 
     const ScopedLock sl (getCallbackLock());
 
@@ -133,6 +129,15 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         default:
             break;
     }
+
+    lpf.processBuffer (multibandBuffer, midi);
+    hpf.processBuffer (multibandBuffer, midi);
+
+    multibandBuffer.applyGain (wet);
+    buffer.applyGain (dry);
+
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }
 
 const String ReverbProcessor::getName() const { return TRANS ("Reverb"); }
@@ -149,6 +154,23 @@ void ReverbProcessor::parameterValueChanged (int id, float value)
     {
         setBypass (value > 0);
     }
+    if (id == 4)// filterParam
+    {
+        if (value > 0.5f)
+        {
+            float normValue = 2.f * (value - 0.5f);
+            float freqHz = 4.f * std::powf (10.f, 2.f * normValue + 1.f);// 40 - 4000
+            hpf.setFreq (freqHz);
+            lpf.setFreq (10000.f);
+        }
+        else
+        {
+            float normValue = value * 2.f;
+            float freqHz = std::powf (10.f, normValue + 3.f);// 10000 -> 2000
+            lpf.setFreq (freqHz);
+            hpf.setFreq (40.f);
+        }
+    }
     //Subtract the number of new parameters in this processor
     BandProcessor::parameterValueChanged (id, value);
 }
@@ -163,9 +185,9 @@ void ReverbProcessor::updateReverbParams()
     Reverb::Parameters localParams;
 
     localParams.roomSize = timeParam->get();
-    localParams.damping = 1 - reverbAmountParam->get();
-    localParams.wetLevel = wetDryParam->get();
-    localParams.dryLevel = 1 - wetDryParam->get();
+    localParams.damping = 1.f;
+    localParams.wetLevel = 1.f;
+    localParams.dryLevel = 0.f;
     localParams.width = 1;
     localParams.freezeMode = 0;
 

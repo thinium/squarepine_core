@@ -1,5 +1,8 @@
 namespace djdawprocessor
 {
+/// wet/dry is true blend (increase + decrease)
+/// Time is listed as percentage, 50% default.
+/// Reverb sounds fairly bright (X-pad adds LPF for low settings and HPF for high settings)
 
 class ReverbProcessor final : public BandProcessor
 {
@@ -24,16 +27,17 @@ public:
     void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    NotifiableAudioParameterFloat* reverbAmountParam = nullptr;
+    NotifiableAudioParameterFloat* filterParam = nullptr;
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
-    NotifiableAudioParameterFloat* xPadParam = nullptr;
     AudioParameterBool* fxOnParam = nullptr;
     //Using the Juce reverb
     Reverb reverb;
     void updateReverbParams();
 
     int idNumber = 1;
+    DigitalFilter hpf;
+    DigitalFilter lpf;
 };
 
 }

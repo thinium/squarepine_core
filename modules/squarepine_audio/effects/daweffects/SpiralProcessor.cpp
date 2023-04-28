@@ -19,19 +19,16 @@ SpiralProcessor::SpiralProcessor (int idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<AudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
-                                                      {
-                                                          if (value > 0)
-                                                              return TRANS ("On");
-                                                          return TRANS ("Off");
-                                                          ;
-                                                      });
-
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> timeRange = { 10.f, 4000.f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
@@ -42,95 +39,90 @@ SpiralProcessor::SpiralProcessor (int idNum)
                                                                      ;
                                                                  });
 
-    NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "X Pad Division", otherRange, 3,
-                                                                  false,// isAutomatable
-                                                                  "X Pad Division ",
-                                                                  AudioProcessorParameter::genericParameter,
-                                                                  [] (float value, int) -> String
-                                                                  {
-                                                                      int val = roundToInt (value);
-                                                                      String txt;
-                                                                      switch (val)
-                                                                      {
-                                                                          case 0:
-                                                                              txt = "1/16";
-                                                                              break;
-                                                                          case 1:
-                                                                              txt = "1/8";
-                                                                              break;
-                                                                          case 2:
-                                                                              txt = "1/4";
-                                                                              break;
-                                                                          case 3:
-                                                                              txt = "1/2";
-                                                                              break;
-                                                                          case 4:
-                                                                              txt = "1";
-                                                                              break;
-                                                                          case 5:
-                                                                              txt = "2";
-                                                                              break;
-                                                                          case 6:
-                                                                              txt = "4";
-                                                                              break;
-                                                                          case 7:
-                                                                              txt = "8";
-                                                                              break;
-                                                                          case 8:
-                                                                              txt = "16";
-                                                                              break;
-                                                                          default:
-                                                                              txt = "1";
-                                                                              break;
-                                                                      }
-
-                                                                      return txt;
-                                                                  });
-
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
 
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
     timeParam = time.get();
     timeParam->addListener (this);
-
-    xPadParam = other.get();
-    xPadParam->addListener (this);
 
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
-    layout.add (std::move (other));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+
+    delayUnit.setDelaySamples (200 * 48);
+
+    hpf.setFilterType (DigitalFilter::FilterType::LSHELF);
+    hpf.setFreq (2000.0f);
+    hpf.setQ (0.3f);
+    hpf.setAmpdB (-3.0f);
 }
 
 SpiralProcessor::~SpiralProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
     timeParam->removeListener (this);
-    xPadParam->removeListener (this);
 }
 
 //============================================================================== Audio processing
 void SpiralProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
+
+    delayUnit.setFs ((float) Fs);
+    sampleRate = Fs;
 }
-void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+
+    float wet;
+    float dry;
+    bool bypass;
+    {
+        const ScopedLock sl (getCallbackLock());
+        wet = wetDryParam->get();
+        dry = 1.f - wet;
+        bypass = ! fxOnParam->get();
+        float delayMS = timeParam->get();
+        float samplesOfDelay = delayMS / 1000.f * static_cast<float> (sampleRate);
+        delayUnit.setDelaySamples (samplesOfDelay);
+    }
+
+    if (bypass || isBypassed())
+        return;
+
+    fillMultibandBuffer (buffer);
+
+    float feedbackAmp = 0.4f;
+    float inputAmp = 0.f;
+    for (int c = 0; c < numChannels; ++c)
+    {
+        for (int s = 0; s < numSamples; ++s)
+        {
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            feedbackAmp = jmax (0.4f, wetSmooth[c]);
+            inputAmp = 1.f - wetSmooth[c];
+            float x = multibandBuffer.getWritePointer (c)[s];
+            float y = (z[c] * feedbackAmp) + inputAmp * x;
+            float w = delayUnit.processSample (y, c);
+            w = hpf.processSample (w, c);
+            z[c] = (2.f / static_cast<float> (M_PI)) * std::atan (w * 2.f);
+
+            multibandBuffer.getWritePointer (c)[s] = wetSmooth[c] * y;
+            buffer.getWritePointer (c)[s] *= inputAmp;
+        }
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
+    }
 }
 
 const String SpiralProcessor::getName() const { return TRANS ("Spiral"); }

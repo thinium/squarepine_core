@@ -22,14 +22,26 @@ public:
     void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    AudioParameterChoice* beatParam = nullptr;
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
-    NotifiableAudioParameterFloat* xPadParam = nullptr;
-    AudioParameterBool* onOffParam = nullptr;
-    AudioParameterBool* fxOnParam = nullptr;
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+
+    double sampleRate = 0.0;
+    int delayTimeInSamples = 0;
+
+    AudioBuffer<float> segmentBuffer;
+    int segmentFillIndex = 0;
+    int segmentPlayIndex = 0;
+    int maxSegmentIndex = 0;
+    bool fillSegmentFlag = false;
+    void fillSegmentBuffer (AudioBuffer<float>& buffer);
+
+    AudioBuffer<float> tempBuffer;// used to multiband processing
+    void fillTempBuffer();
+
+    float wetSmooth[2] = { 0.0 };
 };
 
 }

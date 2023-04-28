@@ -1,3 +1,4 @@
+
 namespace djdawprocessor
 {
 
@@ -18,19 +19,16 @@ PhaserProcessor::PhaserProcessor (int idNum)
                                                                        return txt << "%";
                                                                    });
 
-    auto fxon = std::make_unique<AudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
-                                                      {
-                                                          if (value > 0)
-                                                              return TRANS ("On");
-                                                          return TRANS ("Off");
-                                                          ;
-                                                      });
-
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
+    auto fxon = std::make_unique<NotifiableAudioParameterBool> ("fxonoff", "FX On", true, "FX On/Off ", [] (bool value, int) -> String
+                                                                {
+                                                                    if (value > 0)
+                                                                        return TRANS ("On");
+                                                                    return TRANS ("Off");
+                                                                    ;
+                                                                });
 
     NormalisableRange<float> timeRange = { 10.f, 32000.f };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
@@ -43,8 +41,8 @@ PhaserProcessor::PhaserProcessor (int idNum)
 
     NormalisableRange<float> otherRange = { 0.f, 1.0f };
     auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "Modulation", otherRange, 3,
-                                                                  false,// isAutomatable
-                                                                  "Modulation ",
+                                                                  true,// isAutomatable
+                                                                  "Modulation",
                                                                   AudioProcessorParameter::genericParameter,
                                                                   [] (float value, int) -> String
                                                                   {
@@ -59,9 +57,6 @@ PhaserProcessor::PhaserProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
     timeParam = time.get();
     timeParam->addListener (this);
 
@@ -71,20 +66,28 @@ PhaserProcessor::PhaserProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
     layout.add (std::move (other));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+
+    phase.setFrequency (1.f / (timeParam->get() / 1000.f));
+    phaseWarble.setFrequency (2.f);
+
+    apf1.setFilterType (DigitalFilter::FilterType::APF);
+    apf1.setQ (1.f);
+    apf2.setFilterType (DigitalFilter::FilterType::APF);
+    apf2.setQ (1.f);
+    apf3.setFilterType (DigitalFilter::FilterType::APF);
+    apf3.setQ (1.f);
 }
 
 PhaserProcessor::~PhaserProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
     timeParam->removeListener (this);
     xPadParam->removeListener (this);
 }
@@ -93,9 +96,74 @@ PhaserProcessor::~PhaserProcessor()
 void PhaserProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
+    const ScopedLock sl (getCallbackLock());
+    apf1.setFs (Fs);
+    apf2.setFs (Fs);
+    apf3.setFs (Fs);
+    phase.prepare (Fs, bufferSize);
+    phaseWarble.prepare (Fs, bufferSize);
 }
-void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+
+    float wet;
+    bool bypass;
+    float warble;
+    {
+        const ScopedLock sl (getCallbackLock());
+        wet = wetDryParam->get();
+        phase.setFrequency (1.f / (timeParam->get() / 1000.f));
+        bypass = ! fxOnParam->get();
+        warble = xPadParam->get();
+    }
+
+    if (bypass || isBypassed())
+        return;
+
+    fillMultibandBuffer (buffer);
+
+    float lfoSample;
+    float warbleSample;
+    //
+    for (int c = 0; c < numChannels; ++c)
+    {
+        for (int n = 0; n < numSamples; ++n)
+        {
+            lfoSample = phase.getNextSample (c);
+            warbleSample = phaseWarble.getNextSample (c);
+
+            float x = multibandBuffer.getWritePointer (c)[n];
+
+            if (count < UPDATEFILTERS)
+                count++;// we want to avoid re-calulating filters every sample
+            else
+            {
+                float normLFO = 0.5f * sin (lfoSample) + 0.5f;
+                float warbleLFO = .05f * warbleSmooth[c] * sin (warbleSample);
+                float value = static_cast<float> (normLFO * 0.5 + 0.5 + warbleLFO);
+                float freqHz = 4.f * std::powf (10.f, value + 2.f);// 400 - 4000
+
+                apf1.setFreq (freqHz);
+                apf2.setFreq (freqHz);
+                apf3.setFreq (freqHz);
+                count = 0;
+            }
+
+            float wetSample = apf1.processSample (x, c);
+            wetSample = apf2.processSample (wetSample, c);
+            wetSample = apf3.processSample (wetSample, c);
+            float y = wetSmooth[c] * wetSample;
+
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            warbleSmooth[c] = 0.999f * warbleSmooth[c] + 0.001f * warble;
+            multibandBuffer.getWritePointer (c)[n] = y;
+        }
+    }
+
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }
 
 const String PhaserProcessor::getName() const { return TRANS ("Phaser"); }
@@ -104,13 +172,36 @@ Identifier PhaserProcessor::getIdentifier() const { return "Phaser" + String (id
 /** @internal */
 bool PhaserProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void PhaserProcessor::parameterValueChanged (int id, float value)
+void PhaserProcessor::parameterValueChanged (int paramIndex, float value)
 {
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
+    
+    BandProcessor::parameterValueChanged (paramIndex, value);
 
-    //Subtract the number of new parameters in this processor
-    BandProcessor::parameterValueChanged (id, value);
+    const ScopedLock sl (getCallbackLock());
+    switch (paramIndex)
+    {
+        case (1):
+        {
+            // fx on/off (handled in processBlock)
+            break;
+        }
+        case (2):
+        {
+            //wetDry.setTargetValue (value);
+            //
+            break;
+        }
+        case (3):
+        {
+            break;// time
+        }
+        case (4):
+        {
+            break;// Modulation
+        }
+    }
 }
 
 }

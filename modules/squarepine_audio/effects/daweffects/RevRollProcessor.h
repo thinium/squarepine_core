@@ -1,17 +1,12 @@
-
 namespace djdawprocessor
 {
 
-/// Stereo, alternative echo
-/// There is some galluping pattern, see manual for hints.
-/// XPad is sync'd delay time
-
-class PingPongProcessor final : public BandProcessor
+class RevRollProcessor final : public BandProcessor
 {
 public:
     //Constructor with ID
-    PingPongProcessor (int idNum = 1);
-    ~PingPongProcessor() override;
+    RevRollProcessor (int idNum = 1);
+    ~RevRollProcessor() override;
 
     //============================================================================== Audio processing
     void prepareToPlay (double Fs, int bufferSize) override;
@@ -33,15 +28,18 @@ private:
 
     int idNumber = 1;
 
-    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime { 0.0f };
+    double sampleRate = 0.0;
+    int delayTimeInSamples = 0;
 
-    FractionalDelay delayLeft;
-    FractionalDelay delayRight;
+    AudioBuffer<float> segmentBuffer;
+    int segmentFillIndex = 0;
+    int segmentPlayIndex = 0;
+    int maxSegmentIndex = 0;
+    bool fillSegmentFlag = false;
+    void fillSegmentBuffer (AudioBuffer<float>& buffer);
 
-    float z = 0.f;
-    float wetSmooth = 0.5f;
-
-    float Fs = 48000.f;
+    AudioBuffer<float> tempBuffer;// used to multiband processing
+    void fillTempBuffer();
 };
 
 }

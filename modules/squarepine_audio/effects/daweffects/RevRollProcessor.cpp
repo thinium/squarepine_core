@@ -1,7 +1,7 @@
 namespace djdawprocessor
 {
 
-RollProcessor::RollProcessor (int idNum)
+RevRollProcessor::RevRollProcessor (int idNum)
     : idNumber (idNum)
 {
     reset();
@@ -61,7 +61,7 @@ RollProcessor::RollProcessor (int idNum)
         fillSegmentFlag = true;
 }
 
-RollProcessor::~RollProcessor()
+RevRollProcessor::~RevRollProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
@@ -69,7 +69,7 @@ RollProcessor::~RollProcessor()
 }
 
 //============================================================================== Audio processing
-void RollProcessor::prepareToPlay (double Fs, int bufferSize)
+void RevRollProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
 
@@ -85,7 +85,7 @@ void RollProcessor::prepareToPlay (double Fs, int bufferSize)
     tempBuffer.setSize (numChannels, bufferSize);
     tempBuffer.clear();
 }
-void RollProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
+void RevRollProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
@@ -110,26 +110,20 @@ void RollProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
 
     fillMultibandBuffer (tempBuffer);
 
-    for (int c = 0; c < numChannels; ++c)
-    {
-        for (int n = 0; n < numSamples; ++n)
-        {
-            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+    multibandBuffer.applyGain (wet);
+    buffer.applyGain (dry);
 
-            multibandBuffer.getWritePointer (c)[n] *= wetSmooth[c];
-            buffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
-        }
+    for (int c = 0; c < numChannels; ++c)
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
-    }
 }
 
-const String RollProcessor::getName() const { return TRANS ("Roll"); }
+const String RevRollProcessor::getName() const { return TRANS ("Rev Roll"); }
 /** @internal */
-Identifier RollProcessor::getIdentifier() const { return "Roll" + String (idNumber); }
+Identifier RevRollProcessor::getIdentifier() const { return "Rev Roll" + String (idNumber); }
 /** @internal */
-bool RollProcessor::supportsDoublePrecisionProcessing() const { return false; }
+bool RevRollProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void RollProcessor::parameterValueChanged (int id, float value)
+void RevRollProcessor::parameterValueChanged (int id, float value)
 {
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
@@ -148,7 +142,7 @@ void RollProcessor::parameterValueChanged (int id, float value)
                 fillSegmentFlag = true;// for this effect, only reset when change in on/off
                 delayTimeInSamples = static_cast<int> (round (sampleRate * timeParam->get() / 1000.0));
                 segmentFillIndex = 0;
-                segmentPlayIndex = 0;
+                segmentPlayIndex = delayTimeInSamples;
             }
             break;
         }
@@ -166,7 +160,7 @@ void RollProcessor::parameterValueChanged (int id, float value)
     }
 }
 
-void RollProcessor::fillSegmentBuffer (AudioBuffer<float>& buffer)
+void RevRollProcessor::fillSegmentBuffer (AudioBuffer<float>& buffer)
 {
     int bufferSize = buffer.getNumSamples();
     int numChannels = buffer.getNumChannels();
@@ -193,13 +187,13 @@ void RollProcessor::fillSegmentBuffer (AudioBuffer<float>& buffer)
         fillSegmentFlag = false;
 }
 
-void RollProcessor::fillTempBuffer()
+void RevRollProcessor::fillTempBuffer()
 {
     tempBuffer.clear();
     int bufferSize = tempBuffer.getNumSamples();
     int numChannels = tempBuffer.getNumChannels();
 
-    if (segmentPlayIndex + bufferSize < delayTimeInSamples)
+    if (segmentPlayIndex - bufferSize > 0)
     {
         int currentIndex = segmentPlayIndex;// save to use for each channel
         // Condition when there is enough space to copy entire segmentBuffer to tempBuffer
@@ -208,14 +202,14 @@ void RollProcessor::fillTempBuffer()
             segmentPlayIndex = currentIndex;
             for (int n = 0; n < bufferSize; ++n)
             {
-                tempBuffer.getWritePointer (c)[n] = segmentBuffer.getWritePointer (c)[segmentPlayIndex++];
+                tempBuffer.getWritePointer (c)[n] = segmentBuffer.getWritePointer (c)[segmentPlayIndex--];
             }
         }
     }
     else
     {
         // Condition when the end of segmentBuffer is copied to beginning tempBuffer, then restarts at beginning of segmentBuffer
-        int numSamples = delayTimeInSamples - segmentPlayIndex;// remaining samples to use before restarting
+        int numSamples = segmentPlayIndex;// remaining samples to use before restarting
         int currentIndex = segmentPlayIndex;// save to use for each channel
 
         // This first loop copies the remaining samples in segmentBuffer to the beginning of tempBuffer
@@ -224,12 +218,12 @@ void RollProcessor::fillTempBuffer()
             segmentPlayIndex = currentIndex;
             for (int n = 0; n < numSamples; ++n)
             {
-                tempBuffer.getWritePointer (c)[n] = segmentBuffer.getWritePointer (c)[segmentPlayIndex++];
+                tempBuffer.getWritePointer (c)[n] = segmentBuffer.getWritePointer (c)[segmentPlayIndex--];
             }
         }
 
         // Reset the index of the segment back to the beginning for the next part
-        currentIndex = 0;
+        currentIndex = delayTimeInSamples;
         numSamples = bufferSize - numSamples;
         // Start copying the beginning of segmentBuffer to fill up the rest of tempBuffer
         for (int c = 0; c < numChannels; ++c)
@@ -237,7 +231,7 @@ void RollProcessor::fillTempBuffer()
             segmentPlayIndex = currentIndex;// reset for each channel
             for (int n = numSamples; n < bufferSize; ++n)
             {
-                tempBuffer.getWritePointer (c)[n] = segmentBuffer.getWritePointer (c)[segmentPlayIndex++];
+                tempBuffer.getWritePointer (c)[n] = segmentBuffer.getWritePointer (c)[segmentPlayIndex--];
             }
         }
     }

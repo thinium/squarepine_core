@@ -7,46 +7,61 @@
 namespace djdawprocessor
 {
 
-class FractionalDelay {
-    
+class ModulatedDelay
+{
+    // Use in situations when smoothing of the delay is unnecessary because it comes from an LFO
 public:
-    
-    FractionalDelay();
-    
-    // Destructor
-    ~FractionalDelay();
-    
-    float processSample(float x,int channel);
-    
-    void setFs(float _Fs);
-    
-    void setDelaySamples(float _delay);
-    
+    float processSample (float x, int channel);
+
+    void setFs (float _Fs);
+
+    void setDelaySamples (float _delay);
+
     void clearDelay();
 private:
-    
     float Fs = 48000.f;
-    
+
     float delay = 5.f;
-    float smoothDelay[2] = {5.f};
-    
-    static const int MAX_BUFFER_SIZE = 192000;
-    float delayBuffer[MAX_BUFFER_SIZE][2] = {{0.0f}};
-    int index[2] = {0};
-    
+
+    static const int MAX_BUFFER_SIZE = 384000;
+    float delayBuffer[MAX_BUFFER_SIZE][2] = { { 0.0f } };
+    int index[2] = { 0 };
 };
 
+class FractionalDelay
+{
+    // Includes smoothing of delay, see ModulatedDelay when using an LFO (smoothing unnecessary)
+public:
+    float processSample (float x, int channel);
 
+    void setFs (float _Fs);
+
+    void setDelaySamples (float _delay);
+
+    void clearDelay();
+private:
+    float Fs = 48000.f;
+
+    float delay = 5.f;
+    float smoothDelay[2] = { 5.f };
+
+    static const int MAX_BUFFER_SIZE = 384000;
+    float delayBuffer[MAX_BUFFER_SIZE][2] = { { 0.0f } };
+    int index[2] = { 0 };
+};
 
 //This is a wrapper around Eric Tarr's Fractional Delay class that can be integrated with Juce/Squarepine processors
+// wet/dry is true 50/50 blend (increase + decrease dry/wet)
+// initial value is 500 ms, min=1ms, max = 4000ms
+/// XPad is sync'd delay time
 
-class DelayProcessor final : public InsertProcessor
+class DelayProcessor final : public BandProcessor
 {
 public:
     //Constructor with ID
     DelayProcessor (int idNum = 1);
-    ~DelayProcessor()override;
-    
+    ~DelayProcessor() override;
+
     //============================================================================== Audio processing
     void prepareToPlay (double Fs, int bufferSize) override;
     void processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override;
@@ -60,25 +75,22 @@ public:
     bool supportsDoublePrecisionProcessing() const override;
     //============================================================================== Parameter callbacks
     void parameterValueChanged (int paramNum, float value) override;
-    void parameterGestureChanged (int, bool) override{}
-    
+    void parameterGestureChanged (int, bool) override {}
 private:
     AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-    
+
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
-    NotifiableAudioParameterFloat* delayTimeParam = nullptr;
-    AudioParameterChoice* beatParam = nullptr;
-    NotifiableAudioParameterFloat* xPadParam = nullptr;
-    NotifiableAudioParameterFloat* feedbackParam = nullptr;
-    SwitchableTimeParameter* syncParam = nullptr;
-    NotifiableAudioParameterBool* testParam = nullptr;
-    
+    NotifiableAudioParameterFloat* timeParam = nullptr;
+
     SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
     SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
-    
+
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
+
     int idNumber = 1;
-    
+
     FractionalDelay delayUnit;
+    float sampleRate = 44100.f;
 };
 
 }

@@ -1,4 +1,3 @@
-/// This placeholder class with No DSP.  It's purpose is to provide an appropriate parameter interface for recording useful information..
 
 namespace djdawprocessor
 {
@@ -28,9 +27,23 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterFloat* xPadParam = nullptr;
-    AudioParameterBool* fxOnParam = nullptr;
+    NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
+
+    //Using the Juce reverb
+    Reverb reverb;
+    PitchShifter pitchShifter;
+    AudioBuffer<float> effectBuffer;
+
+    float wetSmooth[2] = { 0.f };
+
+    bool useElastiquePro = false;
+    zplane::ElastiquePtr elastique;
+
+    AudioBuffer<float> inputBuffer;
+    AudioBuffer<float> outputBuffer;
+    
 };
 
 }

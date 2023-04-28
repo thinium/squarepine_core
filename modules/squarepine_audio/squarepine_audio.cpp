@@ -43,6 +43,8 @@ String getInternalProcessorTypeName()
 #include "devices/DummyAudioIODeviceType.cpp"
 #include "devices/MediaDevicePoller.cpp"
 #include "dsp/LFO.cpp"
+#include "dsp/PitchDelay.cpp"
+#include "dsp/PitchShifter.cpp"
 #include "effects/ADSRProcessor.cpp"
 #include "effects/BitCrusherProcessor.cpp"
 #include "effects/ChorusProcessor.cpp"
@@ -50,10 +52,8 @@ String getInternalProcessorTypeName()
 #include "effects/HissingProcessor.cpp"
 #include "effects/JUCEReverbProcessor.cpp"
 #include "effects/LevelsProcessor.cpp"
-#include "effects/LFOProcessor.cpp"
 #include "effects/MuteProcessor.cpp"
 #include "effects/PanProcessor.cpp"
-
 #include "effects/PolarityInversionProcessor.cpp"
 #include "effects/SimpleDistortionProcessor.cpp"
 #include "effects/SimpleEQProcessor.cpp"
@@ -107,5 +107,5 @@ String getInternalProcessorTypeName()
 #include "effects/daweffects/EffectiveTempoProcessor.cpp"
 #include "effects/daweffects/VariableBPMProcessor.cpp"
 #include "effects/daweffects/EQProcessor.cpp"
-
+#include "effects/daweffects/LimiterProcessor.cpp"
 }

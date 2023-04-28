@@ -1,14 +1,13 @@
 namespace djdawprocessor
 {
 
-
 class EffectiveTempoProcessor final : public InternalProcessor,
-public AudioProcessorParameter::Listener
+                                      public AudioProcessorParameter::Listener
 {
 public:
     /** Constructor. */
     EffectiveTempoProcessor();
-    
+
     //==============================================================================
     /** @internal */
     const String getName() const override { return TRANS ("Effective Tempo Processor"); }
@@ -30,10 +29,9 @@ public:
     void parameterValueChanged (int, float) override;
     /** @internal */
     void parameterGestureChanged (int, bool) override;
-    
 private:
     NotifiableAudioParameterFloat* effectiveTempoParameter = nullptr;
-    
+
     //==============================================================================
     template<typename FloatType>
     struct ChannelDetails final
@@ -42,24 +40,24 @@ private:
         {
             channels.resize (numChannels);
             channels.clearQuick();
-            
+
             tempBuffer.resize (numChannels);
             tempBuffer.clearQuick();
         }
-        
+
         Array<FloatType> channels, tempBuffer;
     };
-    
+
     ChannelDetails<float> floatChannelDetails;
     ChannelDetails<double> doubleChannelDetails;
-    
+
     //==============================================================================
-    
+
     template<typename FloatType>
-    void process (juce::AudioBuffer<FloatType>& , ChannelDetails<FloatType>& )
+    void process (juce::AudioBuffer<FloatType>&, ChannelDetails<FloatType>&)
     {
     }
-    
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EffectiveTempoProcessor)
 };

@@ -1,3 +1,6 @@
+//namespace djdawprocessor
+//{
+
 class NotifiableAudioParameterBool : public AudioParameterBool
 {
 public:
@@ -6,11 +9,12 @@ public:
                                   bool defaultValue,
                                   const String& parameterLabel,
                                   bool automate,
-                                  std::function<String (float value, int maximumStringLength)> stringFromValue = nullptr): AudioParameterBool (parameterID,
-                                                                                                                                               parameterName,
-                                                                                                                                               defaultValue,
-                                                                                                                                               AudioParameterBoolAttributes().withLabel (parameterLabel).withStringFromValueFunction (stringFromValue).withAutomatable (automate)),
-                                                                                                                           automatable (automate)
+                                  std::function<String (float value, int maximumStringLength)> stringFromValue = nullptr)
+        : AudioParameterBool (parameterID,
+                              parameterName,
+                              defaultValue,
+                              AudioParameterBoolAttributes().withLabel (parameterLabel).withStringFromValueFunction (stringFromValue).withAutomatable (automate)),
+          automatable (automate)
     {
     }
 
@@ -22,13 +26,13 @@ public:
     {
         automatable = state;
     }
-
 protected:
     void valueChanged (bool newValue) override
     {
         sendValueChangedMessageToListeners (newValue);
     }
-
 private:
     bool automatable;
 };
+
+//}

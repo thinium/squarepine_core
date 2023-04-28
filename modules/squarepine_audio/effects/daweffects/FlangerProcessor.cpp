@@ -27,12 +27,8 @@ FlangerProcessor::FlangerProcessor (int idNum)
                                                                     ;
                                                                 });
 
-    NormalisableRange<float> beatRange = { 0.f, 8.0 };
-    StringArray options { "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16" };
-    auto beat = std::make_unique<AudioParameterChoice> ("beat", "Beat Division", options, 3);
-
-    NormalisableRange<float> timeRange = { 10.f, 32000 };
-    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 10.f,
+    NormalisableRange<float> timeRange = { 10.f, 32000.f };
+    auto time = std::make_unique<NotifiableAudioParameterFloat> ("time", "Time", timeRange, 500.f,
                                                                  true,// isAutomatable
                                                                  "Time ",
                                                                  AudioProcessorParameter::genericParameter,
@@ -44,7 +40,7 @@ FlangerProcessor::FlangerProcessor (int idNum)
                                                                  });
 
     NormalisableRange<float> otherRange = { 0.f, 1.0f };
-    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "Modulation", otherRange, 3,
+    auto other = std::make_unique<NotifiableAudioParameterFloat> ("x Pad", "Modulation", otherRange, 0.f,
                                                                   true,// isAutomatable
                                                                   "Modulation",
                                                                   AudioProcessorParameter::genericParameter,
@@ -61,9 +57,6 @@ FlangerProcessor::FlangerProcessor (int idNum)
     fxOnParam = fxon.get();
     fxOnParam->addListener (this);
 
-    beatParam = beat.get();
-    beatParam->addListener (this);
-
     timeParam = time.get();
     timeParam->addListener (this);
 
@@ -73,20 +66,21 @@ FlangerProcessor::FlangerProcessor (int idNum)
     auto layout = createDefaultParameterLayout (false);
     layout.add (std::move (fxon));
     layout.add (std::move (wetdry));
-    layout.add (std::move (beat));
     layout.add (std::move (time));
     layout.add (std::move (other));
     setupBandParameters (layout);
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+
+    phase.setFrequency (1.f / (timeParam->get() / 1000.f));
+    phaseWarble.setFrequency (2.f);
 }
 
 FlangerProcessor::~FlangerProcessor()
 {
     wetDryParam->removeListener (this);
     fxOnParam->removeListener (this);
-    beatParam->removeListener (this);
     timeParam->removeListener (this);
     xPadParam->removeListener (this);
 }
@@ -95,9 +89,61 @@ FlangerProcessor::~FlangerProcessor()
 void FlangerProcessor::prepareToPlay (double Fs, int bufferSize)
 {
     BandProcessor::prepareToPlay (Fs, bufferSize);
+
+    const ScopedLock sl (getCallbackLock());
+    phase.prepare (Fs, bufferSize);
+    phaseWarble.prepare (Fs, bufferSize);
+    delayBlock.setFs (static_cast<float> (Fs));
 }
-void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>&, MidiBuffer&)
+void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+
+    float depth = 10.f;
+    float wet;
+    bool bypass;
+    float warble;
+    {
+        const ScopedLock sl (getCallbackLock());
+        wet = wetDryParam->get();
+        phase.setFrequency (1.f / (timeParam->get() / 1000.f));
+        bypass = ! fxOnParam->get();
+        warble = xPadParam->get();
+    }
+
+    if (bypass || isBypassed())
+        return;
+
+    fillMultibandBuffer (buffer);
+
+    double lfoSample;
+    double warbleSample;
+    for (int c = 0; c < numChannels; ++c)
+    {
+        for (int n = 0; n < numSamples; ++n)
+        {
+            lfoSample = phase.getNextSample (c);
+            warbleSample = phaseWarble.getNextSample (c);
+            float x = multibandBuffer.getWritePointer (c)[n];
+
+            float offset = depth + 5.f;
+            float warbleLFO = static_cast<float> (2.f * warbleSmooth[c] * sin (warbleSample));
+            float delayTime = static_cast<float> (depth * sin (lfoSample) + offset + warbleLFO);
+
+            delayBlock.setDelaySamples (delayTime);
+
+            float wetSample = delayBlock.processSample (x, c);
+
+            float y = wetSmooth[c] * wetSample;
+
+            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            warbleSmooth[c] = 0.999f * warbleSmooth[c] + 0.001f * warble;
+            multibandBuffer.getWritePointer (c)[n] = y;
+        }
+    }
+    for (int c = 0; c < numChannels; ++c)
+        buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
 }
 
 const String FlangerProcessor::getName() const { return TRANS ("Flanger"); }
@@ -106,13 +152,36 @@ Identifier FlangerProcessor::getIdentifier() const { return "Flanger" + String (
 /** @internal */
 bool FlangerProcessor::supportsDoublePrecisionProcessing() const { return false; }
 //============================================================================== Parameter callbacks
-void FlangerProcessor::parameterValueChanged (int id, float value)
+void FlangerProcessor::parameterValueChanged (int paramIndex, float value)
 {
     //If the beat division is changed, the delay time should be set.
     //If the X Pad is used, the beat div and subsequently, time, should be updated.
+    BandProcessor::parameterValueChanged (paramIndex, value);
 
     //Subtract the number of new parameters in this processor
-    BandProcessor::parameterValueChanged (id, value);
+    const ScopedLock sl (getCallbackLock());
+    switch (paramIndex)
+    {
+        case (1):
+        {
+            // fx on/off (handled in processBlock)
+            break;
+        }
+        case (2):
+        {
+            //wetDry.setTargetValue (value);
+            //
+            break;
+        }
+        case (3):
+        {
+            break;// time
+        }
+        case (4):
+        {
+            break;// Modulation
+        }
+    }
 }
 
 }
