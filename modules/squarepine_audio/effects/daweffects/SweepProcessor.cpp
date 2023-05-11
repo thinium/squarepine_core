@@ -125,6 +125,9 @@ void SweepProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
     if (bypass || isBypassed())
         return;
 
+    if (abs(colour) < 0.01f)
+        wet = 0.f;
+    
     if (colour > 0)
     {
         for (int c = 0; c < numChannels; ++c)

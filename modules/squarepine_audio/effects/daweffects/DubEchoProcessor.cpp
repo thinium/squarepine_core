@@ -122,16 +122,21 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
     float wet;
     float feedbackGain;
     bool bypass;
+    float colour;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         feedbackGain = feedbackParam->get();
         bypass = ! fxOnParam->get();
+        colour = echoColourParam->get();
     }
 
     if (bypass || isBypassed())
         return;
 
+    if (abs(colour) < 0.01f)
+        wet = 0.f;
+    
     for (int c = 0; c < numChannels; ++c)
     {
         for (int n = 0; n < numSamples; ++n)

@@ -88,15 +88,20 @@ void NoiseProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
 
     float wet;
     bool bypass;
+    float colour;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
         bypass = ! fxOnParam->get();
+        colour = colourParam->get();
     }
 
     if (bypass || isBypassed())
         return;
 
+    if (abs(colour) < 0.01f)
+        wet = 0.f;
+    
     for (int c = 0; c < numChannels; ++c)
     {
         for (int n = 0; n < numSamples; ++n)

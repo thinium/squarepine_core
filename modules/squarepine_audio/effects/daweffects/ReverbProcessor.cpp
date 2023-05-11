@@ -109,6 +109,9 @@ void ReverbProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         dry = 1.f - wetDryParam->get();
     }
 
+    if (bypass || isBypassed())
+        return;
+    
     updateReverbParams();
 
     fillMultibandBuffer (buffer);

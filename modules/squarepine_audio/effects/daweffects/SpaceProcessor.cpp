@@ -170,6 +170,13 @@ void SpaceProcessor::updateReverbParams()
     localParams.damping = 0.5f;//1.f - reverbColourParam->get();
     localParams.wetLevel = wetDryParam->get();
     localParams.dryLevel = 1.f - wetDryParam->get();
+    if (abs(reverbColourParam->get()) < 0.01f)
+    {
+        localParams.wetLevel = 0.f;
+        localParams.dryLevel = 1.f;
+    }
+    
+    
     localParams.width = 1;
     localParams.freezeMode = 0;
 
