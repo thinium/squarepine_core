@@ -49,7 +49,7 @@ public:
     std::function<void()> callback;
 
 private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OffloadedTimer)
+    JUCE_LEAK_DETECTOR (OffloadedTimer)
 };
 
 /** This is basic HighResolutionTimer wrapper where the provided callback function will be called.
