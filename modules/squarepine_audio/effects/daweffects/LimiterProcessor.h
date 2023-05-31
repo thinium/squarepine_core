@@ -80,15 +80,8 @@ private:
     std::atomic<float> linA = 1.0f;// Linear gain multiplied by the input signal at the end of the detection path
 
     bool truePeakIsOn = true;
-    static const int TPSIZE = 12;
-    float tpAnalysisBuffer[TPSIZE] = { 0.f };
-    int tpIndex = 0;
-    static const int LATENCY = 6;// True Peak Analysis introduces 6 samples of latency from filtering
-    float latencyBuffer[LATENCY][2] = { { 0.f } };
-    int latIndex = 0;
     TruePeakAnalysis truePeakAnalysis;
     AudioBuffer<float> truePeakFrameBuffer;
-    void fillTruePeakFrameBuffer (AudioBuffer<float> inputBuffer, const int numChannels, const int numSamples);
 
     int OSFactor = 2;
     static const int OSQuality = 3;

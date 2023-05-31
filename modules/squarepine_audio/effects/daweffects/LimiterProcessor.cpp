@@ -24,7 +24,7 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
 
     lookaheadDelay (buffer, lookaheadBuffer, numChannels, numSamples);
 
-    fillTruePeakFrameBuffer (lookaheadBuffer, numChannels, numSamples);
+    truePeakAnalysis.fillTruePeakFrameBuffer (lookaheadBuffer, truePeakFrameBuffer, numChannels, numSamples, true);
 
     if (bypassed)
     {
@@ -248,8 +248,7 @@ void LimiterProcessor::lookaheadDelay (AudioBuffer<float>& buffer, AudioBuffer<f
     }
 }
 
-void LimiterProcessor::bypassDelay (AudioBuffer<float> & buffer, AudioBuffer<float> & delayedBuffer,
-                                        const int numChannels, const int numSamples)
+void LimiterProcessor::bypassDelay (AudioBuffer<float>& buffer, AudioBuffer<float>& delayedBuffer, const int numChannels, const int numSamples)
 {
     float x;
     for (int c = 0; c < numChannels; ++c)
@@ -267,75 +266,6 @@ void LimiterProcessor::bypassDelay (AudioBuffer<float> & buffer, AudioBuffer<flo
             indexBYRead[c]++;
             if (indexBYRead[c] >= LASIZE)
                 indexBYRead[c] = 0;
-        }
-    }
-}
-
-void LimiterProcessor::fillTruePeakFrameBuffer (AudioBuffer<float> inputBuffer, const int numChannels, const int numSamples)
-{
-    if (numChannels == 2)
-    {
-        float xL;
-        float xR;
-        for (int n = 0; n < numSamples; ++n)
-        {
-            xL = inputBuffer.getWritePointer (0)[n];
-            xR = inputBuffer.getWritePointer (1)[n];
-            float detectSample = std::sqrtf (0.5f * (std::powf (xL, 2.0f) + std::powf (xR, 2.0f)));
-
-            tpAnalysisBuffer[tpIndex] = detectSample;
-
-            if (truePeakIsOn)
-            {
-                detectSample = truePeakAnalysis.analyzePhase1 (tpAnalysisBuffer, tpIndex);
-                detectSample = jmax (detectSample, truePeakAnalysis.analyzePhase2 (tpAnalysisBuffer, tpIndex));
-                detectSample = jmax (detectSample, truePeakAnalysis.analyzePhase3 (tpAnalysisBuffer, tpIndex));
-                detectSample = jmax (detectSample, truePeakAnalysis.analyzePhase4 (tpAnalysisBuffer, tpIndex));
-            }
-            truePeakFrameBuffer.getWritePointer (0)[n] = detectSample;
-            tpIndex++;
-            if (tpIndex >= TPSIZE)
-                tpIndex = 0;
-
-            inputBuffer.getWritePointer (0)[n] = latencyBuffer[latIndex][0];
-            inputBuffer.getWritePointer (1)[n] = latencyBuffer[latIndex][1];
-            latencyBuffer[latIndex][0] = xL;
-            latencyBuffer[latIndex][1] = xR;
-
-            latIndex++;
-            if (latIndex >= LATENCY)
-                latIndex = 0;
-        }
-    }
-    else
-    {
-        // MONO
-        float x;
-        float detectSample;
-
-        for (int n = 0; n < numSamples; ++n)
-        {
-            x = inputBuffer.getWritePointer (0)[n];
-
-            tpAnalysisBuffer[tpIndex] = x;
-
-            detectSample = truePeakAnalysis.analyzePhase1 (tpAnalysisBuffer, tpIndex);
-            detectSample = jmax (detectSample, truePeakAnalysis.analyzePhase2 (tpAnalysisBuffer, tpIndex));
-            detectSample = jmax (detectSample, truePeakAnalysis.analyzePhase3 (tpAnalysisBuffer, tpIndex));
-            detectSample = jmax (detectSample, truePeakAnalysis.analyzePhase4 (tpAnalysisBuffer, tpIndex));
-
-            truePeakFrameBuffer.getWritePointer (0)[n] = detectSample;
-
-            tpIndex++;
-            if (tpIndex >= TPSIZE)
-                tpIndex = 0;
-
-            inputBuffer.getWritePointer (0)[n] = latencyBuffer[latIndex][0];
-            latencyBuffer[latIndex][0] = x;
-
-            latIndex++;
-            if (latIndex >= LATENCY)
-                latIndex = 0;
         }
     }
 }
