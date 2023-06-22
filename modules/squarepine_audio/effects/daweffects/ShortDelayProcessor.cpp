@@ -73,6 +73,8 @@ ShortDelayProcessor::ShortDelayProcessor (int idNum)
     delayTime.setTargetValue (timeParam->get());
     wetDry.setTargetValue (0.5);
     
+    setEffectiveInTimeDomain (true);
+
 }
 
 ShortDelayProcessor::~ShortDelayProcessor()

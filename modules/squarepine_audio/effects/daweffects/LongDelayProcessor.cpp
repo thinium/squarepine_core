@@ -75,6 +75,9 @@ LongDelayProcessor::LongDelayProcessor (int idNum)
 
     delayTime.setTargetValue (timeParam->get());
     wetDry.setTargetValue (wetDryParam->get());
+    
+    setEffectiveInTimeDomain (true);
+
 }
 
 LongDelayProcessor::~LongDelayProcessor()

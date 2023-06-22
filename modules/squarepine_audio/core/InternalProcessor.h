@@ -140,7 +140,6 @@ public:
         ScopedBypass (InternalProcessor& ip);
         /** Restores the last bypassing state. */
         ~ScopedBypass();
-
     private:
         InternalProcessor& internalProcessor;
         const bool wasBypassed;
@@ -184,9 +183,12 @@ public:
     /** @internal */
     AudioProcessorParameter* getBypassParameter() const override { return bypassParameter; }
 
-    void setPrimaryParameter (AudioParameterFloat* param){ primaryParameter = param;}
+    void setPrimaryParameter (AudioParameterFloat* param) { primaryParameter = param; }
     AudioParameterFloat* getPrimaryParameter() const { return primaryParameter; }
-
+    // For flagging that a processor works in the time domain
+    void setEffectiveInTimeDomain (bool effective) { effectiveInTimeDomain = effective; }
+    // For obtaining whether a processor works in the time domain
+    bool isEffectiveInTimeDomain() { return effectiveInTimeDomain; }
 protected:
     //==============================================================================
     std::unique_ptr<AudioProcessorValueTreeState> apvts;
@@ -199,10 +201,10 @@ protected:
 
     /** */
     [[nodiscard]] AudioProcessorValueTreeState::ParameterLayout createDefaultParameterLayout (bool addBypassParam = true);
-
 private:
     AudioParameterFloat* primaryParameter = nullptr;
 
+    bool effectiveInTimeDomain = false;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (InternalProcessor)
 };
@@ -227,7 +229,6 @@ public:
     Identifier getIdentifier() const override { return "Dummy"; }
     /** @internal */
     void processBlock (juce::AudioBuffer<float>&, MidiBuffer&) override {}
-
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DummyProcessor)

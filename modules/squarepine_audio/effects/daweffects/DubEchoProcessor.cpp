@@ -94,6 +94,9 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
 
     float samplesOfDelay = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
     delayBlock.setDelaySamples (samplesOfDelay);
+
+    setEffectiveInTimeDomain (true);
+
 }
 
 DubEchoProcessor::~DubEchoProcessor()

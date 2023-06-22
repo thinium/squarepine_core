@@ -59,6 +59,9 @@ RollProcessor::RollProcessor (int idNum)
     bool effectIsOn = fxOnParam->get();
     if (effectIsOn)
         fillSegmentFlag = true;
+    
+    setEffectiveInTimeDomain (true);
+
 }
 
 RollProcessor::~RollProcessor()

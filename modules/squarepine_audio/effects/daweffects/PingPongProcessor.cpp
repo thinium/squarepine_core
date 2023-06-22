@@ -55,6 +55,8 @@ PingPongProcessor::PingPongProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+    setEffectiveInTimeDomain (true);
+
 }
 
 PingPongProcessor::~PingPongProcessor()
