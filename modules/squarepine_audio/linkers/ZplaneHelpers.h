@@ -58,9 +58,6 @@
             #include "elastique/macos/incl/elastiqueProV3API.h"
             #include "elastique/macos/incl/elastiqueProV3DirectAPI.h"
             #include "elastique/macos/incl/zplAudioFile.h"
-            #include "elastique/macos/incl/zplAudioFile.h"
-            #include "elastique/macos/incl/ColoredWaveformIf.h"
-            #include "elastique/macos/incl/WaveformContainerIf.h"
         #endif
 
     #endif
