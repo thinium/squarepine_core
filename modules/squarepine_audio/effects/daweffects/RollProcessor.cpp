@@ -92,11 +92,9 @@ void RollProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
 
     bool bypass;
     float wet;
-    float dry;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        dry = 1.f - wetDryParam->get();
         bypass = ! fxOnParam->get();
     }
 

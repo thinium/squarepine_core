@@ -81,12 +81,10 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
     const int numSamples = buffer.getNumSamples();
 
     float wet;
-    float dry;
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        dry = 1.f - wet;
         phase.setFrequency (1.f / (timeParam->get() / 1000.f));
         bypass = ! fxOnParam->get();
     }

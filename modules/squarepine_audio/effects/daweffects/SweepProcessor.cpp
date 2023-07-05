@@ -111,13 +111,11 @@ void SweepProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
     const int numSamples = buffer.getNumSamples();
 
     float wet;
-    float dry;
     bool bypass;
     float colour;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        dry = 1.f - wet;
         bypass = ! fxOnParam->get();
         colour = colourParam->get();
     }

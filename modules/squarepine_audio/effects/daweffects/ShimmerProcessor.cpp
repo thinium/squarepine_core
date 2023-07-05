@@ -140,14 +140,10 @@ void ShimmerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
 
     float wet;
     bool bypass;
-    float depth;
-    float time;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        time = timeParam->get();
         bypass = ! fxOnParam->get();
-        depth = xPadParam->get();
     }
 
     if (bypass || isBypassed())

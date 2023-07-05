@@ -95,11 +95,9 @@ void SlipRollProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
 
     bool bypass;
     float wet;
-    float dry;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        dry = 1.f - wetDryParam->get();
         bypass = ! fxOnParam->get();
     }
 

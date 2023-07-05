@@ -86,12 +86,10 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     const int numSamples = buffer.getNumSamples();
 
     float wet;
-    float dry;
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        dry = 1.f - wet;
         bypass = ! fxOnParam->get();
         float delayMS = timeParam->get();
         float samplesOfDelay = delayMS / 1000.f * static_cast<float> (sampleRate);
