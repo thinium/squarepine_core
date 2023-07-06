@@ -79,7 +79,7 @@ private:
         float normFreq = normFreqSmooth.getNextValue();
 
         float freqHz = 2.f * std::powf (10.f, 3.f * normFreq + 1.f);
-        freqHz = jmin (freqHz, (sampleRate / 2.0) * 0.95);
+        freqHz = jmin (freqHz, (sampleRate / 2.f) * 0.95f);
         float wd = 2.f * (float) M_PI * freqHz;
         float T = 1.f / sampleRate;
         float wa = (2.f / T) * std::tan (wd * T / 2.f);// Warping for BLT
@@ -169,7 +169,7 @@ private:
         float normFreq = normFreqSmooth.getNextValue();
 
         float freqHz = 2.f * std::powf (10.f, 3.f * normFreq + 1.f);
-        freqHz = jmin (freqHz, (sampleRate / 2.0) * 0.95);
+        freqHz = jmin (freqHz, (sampleRate / 2.f) * 0.95f);
         float wd = 2.f * (float) M_PI * freqHz;
         float T = 1.f / sampleRate;
         float wa = (2.f / T) * std::tan (wd * T / 2.f);// Warping for BLT
@@ -255,7 +255,7 @@ public:
     void setFreq (float newFreq)
     {
         freqTarget = jlimit (20.0f, 20000.0f, newFreq);
-        freqTarget = jmin (freqTarget, (sampleRate / 2.0) * 0.95);
+        freqTarget = jmin (freqTarget, (Fs / 2.f) * 0.95f);
     }
 
     void setQ (float newQ)
