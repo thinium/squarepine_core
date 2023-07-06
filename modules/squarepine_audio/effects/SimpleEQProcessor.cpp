@@ -102,7 +102,8 @@ private:
                           SampleType currentGain)
     {
         const auto g = currentGain;
-        const auto c = jmin ((SampleType) cutoff->get(), (sampleRate / 2.0) * 0.95);
+        float freqLimit =  jmin (cutoff->get(), (static_cast<float> (sampleRate) / 2.f) * 0.95f);
+        const auto c = (SampleType) freqLimit;
         const auto r = (SampleType) resonance->get();
         using Coeffs = Coefficients<SampleType>;
         typename Coeffs::Ptr coeffs;
