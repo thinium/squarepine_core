@@ -5,10 +5,11 @@ public:
     InternalFilter (FilterType filterType,
                     NotifiableAudioParameterFloat* g,
                     NotifiableAudioParameterFloat* c,
-                    NotifiableAudioParameterFloat* r): type (filterType),
-                                                       gain (g),
-                                                       cutoff (c),
-                                                       resonance (r)
+                    NotifiableAudioParameterFloat* r)
+        : type (filterType),
+          gain (g),
+          cutoff (c),
+          resonance (r)
     {
         updateCoefficients();
 
@@ -80,7 +81,6 @@ public:
     NotifiableAudioParameterFloat* resonance = nullptr;
 
     std::vector<NotifiableAudioParameterFloat*> parameters;
-
 private:
     void updateCoefficients()
     {
@@ -102,7 +102,7 @@ private:
                           SampleType currentGain)
     {
         const auto g = currentGain;
-        const auto c = (SampleType) cutoff->get();
+        const auto c = jmin ((SampleType) cutoff->get(), (sampleRate / 2.0) * 0.95);
         const auto r = (SampleType) resonance->get();
         using Coeffs = Coefficients<SampleType>;
         typename Coeffs::Ptr coeffs;
@@ -143,7 +143,8 @@ private:
 };
 
 //==============================================================================
-SimpleEQProcessor::SimpleEQProcessor(): InternalProcessor (false)
+SimpleEQProcessor::SimpleEQProcessor()
+    : InternalProcessor (false)
 {
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", createParameterLayout()));
 }
@@ -201,16 +202,17 @@ AudioProcessorValueTreeState::ParameterLayout SimpleEQProcessor::createParameter
     };
 
     const Config configs[] = {
-        { NEEDS_TRANS ("HighShelf"), FilterType::highpass, HIGHFREQCUTOFF },
-        { NEEDS_TRANS ("High Mid Peak/Bell"), FilterType::bandpass, HIGHMIDFREQPEAK },
-        { NEEDS_TRANS ("Peak/Bell"), FilterType::bandpass, MIDFREQPEAK },
-        { NEEDS_TRANS ("LowShelf"), FilterType::lowpass, LOWFREQCUTOFF }
+        {NEEDS_TRANS ("HighShelf"),           FilterType::highpass, HIGHFREQCUTOFF },
+        { NEEDS_TRANS ("High Mid Peak/Bell"), FilterType::bandpass, HIGHMIDFREQPEAK},
+        { NEEDS_TRANS ("Peak/Bell"),          FilterType::bandpass, MIDFREQPEAK    },
+        { NEEDS_TRANS ("LowShelf"),           FilterType::lowpass,  LOWFREQCUTOFF  }
     };
 
     filters.ensureStorageAllocated (numElementsInArray (configs));
 
     auto layout = createDefaultParameterLayout();
-    const std::function<float (float, float, float)> from0To1 = [] (float start, float end, float value) -> float {
+    const std::function<float (float, float, float)> from0To1 = [] (float start, float end, float value) -> float
+    {
         float skew = 0.65f;
         if (value < skew)
             return (skew - value) / skew * start;
@@ -218,7 +220,8 @@ AudioProcessorValueTreeState::ParameterLayout SimpleEQProcessor::createParameter
         return (value - skew) / (1.f - skew) * end;
     };
 
-    const std::function<float (float, float, float)> to0To1 = [] (float start, float end, float db) -> float {
+    const std::function<float (float, float, float)> to0To1 = [] (float start, float end, float db) -> float
+    {
         float skew = 0.65f;
         if (db < 0.0f)
             return ((-db / start) + 1.f) * skew;
@@ -241,7 +244,8 @@ AudioProcessorValueTreeState::ParameterLayout SimpleEQProcessor::createParameter
                                                                      true,
                                                                      getName(),
                                                                      AudioProcessorParameter::genericParameter,
-                                                                     [] (float value, int) -> String {
+                                                                     [] (float value, int) -> String
+                                                                     {
                                                                          if (approximatelyEqual (value, 0.0f))
                                                                              return "0 dB";
 
