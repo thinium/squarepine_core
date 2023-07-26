@@ -132,12 +132,10 @@ void VinylBreakProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, M
     const int numSamples = buffer.getNumSamples();
 
     float wet;
-    float dry;
     bool bypass;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        dry = 1.f - wet;
         bypass = ! fxOnParam->get();
     }
 
