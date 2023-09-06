@@ -62,6 +62,8 @@ SlipRollProcessor::SlipRollProcessor (int idNum)
         fillSegmentFlag = true;
         segmentIndex = 0;
     }
+    setEffectiveInTimeDomain (true);
+
 }
 
 SlipRollProcessor::~SlipRollProcessor()

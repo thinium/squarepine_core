@@ -63,6 +63,9 @@ SpiralProcessor::SpiralProcessor (int idNum)
     hpf.setFreq (2000.0f);
     hpf.setQ (0.3f);
     hpf.setAmpdB (-3.0f);
+    
+    setEffectiveInTimeDomain (true);
+
 }
 
 SpiralProcessor::~SpiralProcessor()

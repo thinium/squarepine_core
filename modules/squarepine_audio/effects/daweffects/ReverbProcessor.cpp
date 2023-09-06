@@ -74,6 +74,9 @@ ReverbProcessor::ReverbProcessor (int idNum)
     hpf.setFreq (40.f);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
+    
+    setEffectiveInTimeDomain (true);
+
 }
 
 ReverbProcessor::~ReverbProcessor()
