@@ -60,11 +60,16 @@ SpiralProcessor::SpiralProcessor (int idNum)
     delayUnit.setDelaySamples (200 * 48);
 
     hpf.setFilterType (DigitalFilter::FilterType::LSHELF);
-    hpf.setFreq (2000.0f);
+    hpf.setFreq (1000.0f);
     hpf.setQ (0.3f);
     hpf.setAmpdB (-3.0f);
     
     setEffectiveInTimeDomain (true);
+
+    lpf.setFilterType (DigitalFilter::FilterType::HSHELF);
+    lpf.setFreq (15000.0f);
+    lpf.setQ (0.3f);
+    lpf.setAmpdB (-3.0f);
 
 }
 
@@ -82,6 +87,8 @@ void SpiralProcessor::prepareToPlay (double Fs, int bufferSize)
 
     delayUnit.setFs ((float) Fs);
     sampleRate = Fs;
+    hpf.setFs(Fs);
+    lpf.setFs(Fs);
 }
 void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -117,6 +124,7 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
             float y = (z[c] * feedbackAmp) + inputAmp * x;
             float w = delayUnit.processSample (y, c);
             w = hpf.processSample (w, c);
+            w = lpf.processSample (w, c);
             z[c] = (2.f / static_cast<float> (M_PI)) * std::atan (w * 2.f);
 
             multibandBuffer.getWritePointer (c)[s] = wetSmooth[c] * y;

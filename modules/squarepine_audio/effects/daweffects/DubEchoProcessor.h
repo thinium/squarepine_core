@@ -50,8 +50,10 @@ private:
 
     double sampleRate = 48000.0;
 
-    FractionalDelay delayBlock;
+    ModulatedDelay delayBlock;
     float feedbackSample[2] = { 0.f };
+    PhaseIncrementer phase;
+    float primaryDelay = 1000.f;
 
     DigitalFilter hpf;
     DigitalFilter lpf;

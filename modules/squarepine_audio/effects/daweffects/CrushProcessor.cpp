@@ -115,13 +115,15 @@ void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
     if (abs(colour) < 0.01f)
         wet = 0.f;
     
+    
+    highPassFilter.processBuffer (buffer, midi);
+    bitCrusher.processBlock (buffer, midi);
+    
     for (int c = 0; c < numChannels; ++c)
     {
         dryBuffer.copyFrom (c, 0, buffer, c, 0, buffer.getNumSamples());
     }
-    bitCrusher.processBlock (buffer, midi);
-    highPassFilter.processBuffer (buffer, midi);
-
+    
     for (int c = 0; c < numChannels; ++c)
     {
         for (int n = 0; n < numSamples; ++n)
@@ -154,7 +156,7 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
     else if (paramNum == 3) // "color"
     {
         float other = otherParam->get();
-        float samplesOfDelay = jmin (15.f, 1.f + abs (value) * 10.f + other * 10.f);
+        float samplesOfDelay = jmin (14.f, 1.f + abs (value) * 10.f + other * 10.f);
         delayBlock.setDelaySamples (samplesOfDelay);
         if (value <= 0.f)
         {
@@ -162,7 +164,7 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
             float normValue = (value * -1.f);
             // 4 bits -> normValue = 0
             // 9 bits -> normValue = 1
-            float bitDepth = 5.f * std::sqrt (1.f - normValue) + 4.f;
+            float bitDepth = 4.f * std::powf (1.f - normValue, 2.f) + 6.f;
             bitCrusher.setBitDepth (bitDepth);
             colorSign = 1.f;
         }
@@ -174,7 +176,7 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
             highPassFilter.setFreq (freqHz);
             // 9 bits -> value = 0.5, normValue = 0
             // 4 bits -> value = 1, normValue = 0
-            float bitDepth = 5.f * std::sqrt (1.f - normValue) + 4.f;
+            float bitDepth = 4.f * std::powf (1.f - normValue, 2.f) + 6.f;
             bitCrusher.setBitDepth (bitDepth);
             colorSign = -1.f;
         }
@@ -182,7 +184,7 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
     else if (paramNum == 4)// "other"
     {
         float color = colourParam->get();
-        float samplesOfDelay = jmin (15.f, 1.f + value * 10.f + abs (color) * 10.f);
+        float samplesOfDelay = jmin (14.f, 1.f + value * 10.f + abs (color) * 10.f);
         delayBlock.setDelaySamples (samplesOfDelay);
     }
 }

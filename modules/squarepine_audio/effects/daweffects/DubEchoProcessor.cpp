@@ -92,11 +92,12 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
 
-    float samplesOfDelay = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
-    delayBlock.setDelaySamples (samplesOfDelay);
-
+    primaryDelay = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
+    delayBlock.setDelaySamples (primaryDelay);
+    
+    phase.setFrequency (0.3f);
+    
     setEffectiveInTimeDomain (true);
-
 }
 
 DubEchoProcessor::~DubEchoProcessor()
@@ -145,15 +146,20 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
         for (int n = 0; n < numSamples; ++n)
         {
             float x = buffer.getWritePointer (c)[n];
-            float y = (1.f - gainSmooth[c]) * x + wetSmooth[c] * feedbackSample[c];
+            float y = x + wetSmooth[c] * feedbackSample[c];
 
             auto y_filter = hpf.processSample (y, c);
             y_filter = lpf.processSample (y_filter, c);
-            y_filter = hpf.processSample (y_filter, c);
+            //y_filter = hpf.processSample (y_filter, c);
+            
+            float lfoSample = phase.getNextSample (c);
+            float depth = 10.f;
+            float modDelay = static_cast<float> (depth * sin (lfoSample));
+            delayBlock.setDelaySamples (primaryDelay + modDelay);
             feedbackSample[c] = gainSmooth[c] * delayBlock.processSample (y_filter, c);
 
             gainSmooth[c] = 0.999f * gainSmooth[c] + 0.001f * feedbackGain;
-            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
+            wetSmooth[c] = 0.9999f * wetSmooth[c] + 0.0001f * wet;
             buffer.getWritePointer (c)[n] = y;
         }
     }
@@ -183,16 +189,16 @@ void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
         {//Colour
             if (value > 0.f)
             {
-                float freqHz = 4.f * std::powf (10.f, value + 2.f);// 400 - 4000
+                float freqHz = 2.f * std::powf (10.f, value + 2.f);// 200 - 2000
                 hpf.setFreq (freqHz);
-                lpf.setFreq (10000.f);
+                lpf.setFreq (11000.f);
             }
             else
             {
                 float normValue = 1.f + value;
                 float freqHz = std::powf (10.f, normValue + 3.f) + 1000.f;// 11000 -> 2000
                 lpf.setFreq (freqHz);
-                hpf.setFreq (400.f);
+                hpf.setFreq (200.f);
             }
             break;
         }
@@ -202,8 +208,8 @@ void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (5):
         {//Time
-            float samplesOfDelay = value / 1000.f * static_cast<float> (sampleRate);
-            delayBlock.setDelaySamples (samplesOfDelay);
+            primaryDelay = value / 1000.f * static_cast<float> (sampleRate);
+            
             break;
         }
     }

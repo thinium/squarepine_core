@@ -36,6 +36,8 @@ private:
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     DigitalFilter hpf;
+    DigitalFilter lpf;
+
 
     int idNumber = 1;
 
