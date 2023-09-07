@@ -88,11 +88,20 @@ CrushProcessor::~CrushProcessor()
 //============================================================================== Audio processing
 void CrushProcessor::prepareToPlay (double sampleRate, int bufferSize)
 {
+    Fs = sampleRate;
+    
+    downSampler.setRatio (sampleRate, sampleRate);
+    const int numChannels = 2;
+    downSampler.prepare (numChannels);
+    upSampler.prepare (numChannels);
+    
     bitCrusher.prepareToPlay (sampleRate, bufferSize);
     highPassFilter.setFilterType (DigitalFilter::FilterType::HPF);
     highPassFilter.setFs (sampleRate);
     delayBlock.setFs (static_cast<float> (sampleRate));
-    dryBuffer = AudioBuffer<float> (2, bufferSize);
+    dryBuffer = AudioBuffer<float> (numChannels, bufferSize);
+    resampledBuffer = AudioBuffer<float> (numChannels, bufferSize);
+    
 }
 void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
@@ -113,33 +122,24 @@ void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
         return;
 
     if (abs(colour) < 0.01f)
-        wet = 0.f;
+        return; //wet = 0.f;
     
     
     highPassFilter.processBuffer (buffer, midi);
-    bitCrusher.processBlock (buffer, midi);
     
-    for (int c = 0; c < numChannels; ++c)
-    {
-        dryBuffer.copyFrom (c, 0, buffer, c, 0, buffer.getNumSamples());
-    }
+    //downFs = Fs - (9.0*Fs/10.0) * abs(colour);
+    downFs = 1.1f * std::powf (10.f, (1.f - abs(colour)) + 3.f); // 1.1k - 11k
+    const auto downSamplingRatio = Fs / downFs;
     
-    for (int c = 0; c < numChannels; ++c)
-    {
-        for (int n = 0; n < numSamples; ++n)
-        {
-            float x = buffer.getWritePointer (c)[n];
+    downSampler.setRatio (Fs, downFs);
+    upSampler.setRatio (downFs, Fs);
+    
+    const auto scaledBufferSize = (int) std::round ((double) numSamples / downSamplingRatio);
+    resampledBuffer.setSize (numChannels, scaledBufferSize, false, true, true);
+    downSampler.process (buffer, resampledBuffer);
+    upSampler.process (resampledBuffer, buffer);
 
-            float wetSample = delayBlock.processSample (x, c);
-
-            //float y = x + wetSmooth[c] * wetSample;
-            buffer.getWritePointer (c)[n] = wetSmooth[c] * wetSample * colorSmooth[c];
-            dryBuffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
-            wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            colorSmooth[c] = 0.999f * colorSmooth[c] + 0.001f * colorSign;
-        }
-        buffer.addFrom (c, 0, dryBuffer, c, 0, buffer.getNumSamples());
-    }
+    //highPassFilter.processBuffer (buffer, midi);
 }
 
 const String CrushProcessor::getName() const { return TRANS ("Crush"); }

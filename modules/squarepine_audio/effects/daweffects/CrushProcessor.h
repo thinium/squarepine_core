@@ -58,6 +58,7 @@ private:
 
     int idNumber = 1;
 
+    double Fs = 48000.0;
     BitCrusherProcessor bitCrusher;
     DigitalFilter highPassFilter;
     FractionalDelay delayBlock;
@@ -67,6 +68,12 @@ private:
     float colorSmooth[2] = { 0.f };
 
     AudioBuffer<float> dryBuffer;
+    
+    
+    ZeroOrderHoldResampler downSampler; //ZeroOrderHoldResampler
+    ZeroOrderHoldResampler upSampler; //LinearResampler //LagrangeResampler
+    AudioBuffer<float> resampledBuffer;
+    double downFs = 48000.0;
 };
 
 }
