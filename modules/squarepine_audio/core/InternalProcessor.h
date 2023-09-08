@@ -188,7 +188,7 @@ public:
     // For flagging that a processor works in the time domain
     void setEffectiveInTimeDomain (bool effective) { effectiveInTimeDomain = effective; }
     // For obtaining whether a processor works in the time domain
-    bool isEffectiveInTimeDomain() { return effectiveInTimeDomain; }
+    bool isEffectiveInTimeDomain() const { return effectiveInTimeDomain; }
 protected:
     //==============================================================================
     std::unique_ptr<AudioProcessorValueTreeState> apvts;

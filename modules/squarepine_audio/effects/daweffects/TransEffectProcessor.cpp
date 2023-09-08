@@ -56,6 +56,7 @@ TransEffectProcessor::TransEffectProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+    setEffectiveInTimeDomain (true);
 
     phase.setFrequency (1.f / (timeParam->get() / 1000.f));
 }

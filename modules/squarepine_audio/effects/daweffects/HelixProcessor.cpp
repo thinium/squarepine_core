@@ -57,6 +57,7 @@ HelixProcessor::HelixProcessor (int idNum)
     apvts.reset (new AudioProcessorValueTreeState (*this, nullptr, "parameters", std::move (layout)));
 
     setPrimaryParameter (wetDryParam);
+    setEffectiveInTimeDomain (true);
 
     delayUnit.setDelaySamples (200 * 48);
 }
