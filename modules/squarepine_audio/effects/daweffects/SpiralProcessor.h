@@ -35,9 +35,10 @@ private:
     NotifiableAudioParameterFloat* wetDryParam = nullptr;
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
-    DigitalFilter hpf;
-    DigitalFilter lpf;
+    DigitalFilter hsf;
+    DigitalFilter lsf;
 
+    AllPassDelay apf;
 
     int idNumber = 1;
 

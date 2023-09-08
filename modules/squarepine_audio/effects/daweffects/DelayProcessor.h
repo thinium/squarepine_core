@@ -50,6 +50,27 @@ private:
     int index[2] = { 0 };
 };
 
+class AllPassDelay
+{
+public:
+    float processSample (float x, int channel);
+
+    void setFs (float _Fs);
+
+    void setDelaySamples (float _delay);
+    
+    void setFeedbackAmount (double fb) {feedbackAmount = fb;}
+
+    void clearDelay();
+private:
+    float Fs = 48000.f;
+
+    FractionalDelay delayBlock;
+    double feedbackAmount = 0.0;
+    double feedbackSample[2] = {0.0};
+};
+
+
 //This is a wrapper around Eric Tarr's Fractional Delay class that can be integrated with Juce/Squarepine processors
 // wet/dry is true 50/50 blend (increase + decrease dry/wet)
 // initial value is 500 ms, min=1ms, max = 4000ms

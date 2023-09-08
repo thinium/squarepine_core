@@ -147,6 +147,28 @@ void FractionalDelay::clearDelay()
     }
 }
 
+float AllPassDelay::processSample (float x, int channel)
+{
+    float y = -feedbackAmount * x + feedbackSample[channel];
+    feedbackSample[channel] = delayBlock.processSample(x + feedbackAmount * feedbackSample[channel], channel);
+    return y;
+}
+
+void AllPassDelay::setFs (float _Fs)
+{
+    this->Fs = _Fs;
+}
+
+void AllPassDelay::setDelaySamples (float _delay)
+{
+    delayBlock.setDelaySamples(_delay);
+}
+
+void AllPassDelay::clearDelay()
+{
+    delayBlock.clearDelay();
+}
+
 DelayProcessor::DelayProcessor (int idNum)
     : idNumber (idNum)
 {

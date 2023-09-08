@@ -59,17 +59,17 @@ SpiralProcessor::SpiralProcessor (int idNum)
 
     delayUnit.setDelaySamples (200 * 48);
 
-    hpf.setFilterType (DigitalFilter::FilterType::LSHELF);
-    hpf.setFreq (1000.0f);
-    hpf.setQ (0.3f);
-    hpf.setAmpdB (-3.0f);
+    lsf.setFilterType (DigitalFilter::FilterType::LSHELF);
+    lsf.setFreq (1000.0f);
+    lsf.setQ (0.3f);
+    lsf.setAmpdB (-3.0f);
     
     setEffectiveInTimeDomain (true);
 
-    lpf.setFilterType (DigitalFilter::FilterType::HSHELF);
-    lpf.setFreq (15000.0f);
-    lpf.setQ (0.3f);
-    lpf.setAmpdB (-3.0f);
+    hsf.setFilterType (DigitalFilter::FilterType::HSHELF);
+    hsf.setFreq (15000.0f);
+    hsf.setQ (0.3f);
+    hsf.setAmpdB (-3.0f);
 
 }
 
@@ -87,8 +87,10 @@ void SpiralProcessor::prepareToPlay (double Fs, int bufferSize)
 
     delayUnit.setFs ((float) Fs);
     sampleRate = Fs;
-    hpf.setFs(Fs);
-    lpf.setFs(Fs);
+    hsf.setFs(Fs);
+    lsf.setFs(Fs);
+    
+    apf.setFeedbackAmount(0.3f);
 }
 void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -104,6 +106,7 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
         float delayMS = timeParam->get();
         float samplesOfDelay = delayMS / 1000.f * static_cast<float> (sampleRate);
         delayUnit.setDelaySamples (samplesOfDelay);
+        apf.setDelaySamples(samplesOfDelay/4.f);
     }
 
     if (bypass || isBypassed())
@@ -111,24 +114,25 @@ void SpiralProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
 
     fillMultibandBuffer (buffer);
 
-    float feedbackAmp = 0.4f;
+    float feedbackAmp = 0.3f;
+    
     float inputAmp = 0.f;
     for (int c = 0; c < numChannels; ++c)
     {
         for (int s = 0; s < numSamples; ++s)
         {
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            feedbackAmp = jmax (0.4f, wetSmooth[c]);
-            inputAmp = 1.f - wetSmooth[c];
+            feedbackAmp = jmax (0.3f, wetSmooth[c]);
+            inputAmp = jmax(1.f - wetSmooth[c],0.2f);
             float x = multibandBuffer.getWritePointer (c)[s];
             float y = (z[c] * feedbackAmp) + inputAmp * x;
             float w = delayUnit.processSample (y, c);
-            w = hpf.processSample (w, c);
-            w = lpf.processSample (w, c);
-            z[c] = (2.f / static_cast<float> (M_PI)) * std::atan (w * 2.f);
-
+            w = hsf.processSample (w, c);
+            w = lsf.processSample (w, c);
+            //z[c] = (2.f / static_cast<float> (M_PI)) * std::atan (w * 2.f);
+            z[c] = apf.processSample(w,c);
+            
             multibandBuffer.getWritePointer (c)[s] = wetSmooth[c] * y;
-            buffer.getWritePointer (c)[s] *= inputAmp;
         }
         buffer.addFrom (c, 0, multibandBuffer.getWritePointer (c), numSamples);
     }
