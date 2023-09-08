@@ -59,10 +59,7 @@ private:
     int idNumber = 1;
 
     double Fs = 48000.0;
-    BitCrusherProcessor bitCrusher;
     DigitalFilter highPassFilter;
-    FractionalDelay delayBlock;
-    float colorSign = 1.f;
 
     float wetSmooth[2] = { 0.f };
     float colorSmooth[2] = { 0.f };
