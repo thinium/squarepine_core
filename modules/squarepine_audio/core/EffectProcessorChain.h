@@ -163,6 +163,8 @@ public:
         @returns true if anything changed.
     */
     bool setMixLevel (int index, float mixLevel);
+    
+    void setEffectTimeRelativeToProjectDownBeat (double effectTimeRelativeToProjectDownBeat) override;
 
     //==============================================================================
     /** Obtain the name of a plugin that exists within the array of effect plugins

@@ -254,6 +254,21 @@ bool EffectProcessorChain::setMixLevel (int index, float mixLevel)
     return setEffectProperty (index, [&] (EffectProcessor::Ptr e) { e->mixLevel = mixLevel; });
 }
 
+void EffectProcessorChain::setEffectTimeRelativeToProjectDownBeat (double effectTimeRelativeToProjectDownBeat)
+{
+    for (auto effect : plugins)
+    {
+        if (effect != nullptr)
+        {
+            if (auto plugin = effect->plugin)
+            {
+                auto* internalProcessor = dynamic_cast<InternalProcessor*> (plugin.get());
+                internalProcessor->setEffectTimeRelativeToProjectDownBeat (effectTimeRelativeToProjectDownBeat);
+            }
+        }
+    }
+}
+
 //==============================================================================
 void EffectProcessorChain::prepareToPlay (const double sampleRate, const int estimatedSamplesPerBlock)
 {

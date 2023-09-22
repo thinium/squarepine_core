@@ -71,7 +71,7 @@ ReverbProcessor::ReverbProcessor (int idNum)
     setPrimaryParameter (wetDryParam);
 
     hpf.setFilterType (DigitalFilter::FilterType::HPF);
-    hpf.setFreq (40.f);
+    hpf.setFreq (200.f);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
     
@@ -165,7 +165,7 @@ void ReverbProcessor::parameterValueChanged (int id, float value)
         if (value > 0.5f)
         {
             float normValue = 2.f * (value - 0.5f);
-            float freqHz = 4.f * std::powf (10.f, 2.f * normValue + 1.f);// 40 - 4000
+            float freqHz = std::powf (10.f, 1.6f * normValue + 2.f) + 100.f;// 200 - 4000
             hpf.setFreq (freqHz);
             lpf.setFreq (10000.f);
         }
@@ -174,7 +174,7 @@ void ReverbProcessor::parameterValueChanged (int id, float value)
             float normValue = value * 2.f;
             float freqHz = std::powf (10.f, normValue + 3.f);// 10000 -> 2000
             lpf.setFreq (freqHz);
-            hpf.setFreq (40.f);
+            hpf.setFreq (200.f);
         }
     }
     //Subtract the number of new parameters in this processor

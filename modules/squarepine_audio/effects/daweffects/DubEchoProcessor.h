@@ -58,6 +58,9 @@ private:
     DigitalFilter hpf;
     DigitalFilter lpf;
 
+    const float lfoFreq = 0.3f; // subtle, slow modulation
+    const float periodOfCycle = 1.f/lfoFreq;
+    
     float gainSmooth[2] = { 0.f };
     float gain;
     float wetSmooth[2] = { 0.f };

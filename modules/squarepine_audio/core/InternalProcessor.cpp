@@ -111,6 +111,11 @@ void InternalProcessor::removeProperty (const Identifier& id, UndoManager* um)
 {
     getState().removeProperty (id, um);
 }
+//==============================================================================
+void InternalProcessor::setEffectTimeRelativeToProjectDownBeat(double timeRelativeToProjectDownBeat)
+{
+    effectTimeRelativeToProjectDownBeat = timeRelativeToProjectDownBeat;
+}
 
 //==============================================================================
 void InternalProcessor::setBypass (const bool shouldBeBypassed)

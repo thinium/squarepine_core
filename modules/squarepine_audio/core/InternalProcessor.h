@@ -117,6 +117,8 @@ public:
     void removeProperty (const Identifier&, UndoManager* undoManager = nullptr);
 
     //==============================================================================
+    virtual void setEffectTimeRelativeToProjectDownBeat (double timeRelativeToProjectDownBeat);
+    //==============================================================================
     /** Effectively enables or disables this processor. */
     void setBypass (bool shouldBeBypassed);
 
@@ -196,6 +198,7 @@ protected:
     class BypassParameter;
     AudioParameterBool* bypassParameter = nullptr;
 
+    double effectTimeRelativeToProjectDownBeat;
     /** */
     [[nodiscard]] std::unique_ptr<AudioParameterBool> createBypassParameter() const;
 

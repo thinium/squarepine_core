@@ -112,10 +112,11 @@ void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     float wet;
     bool bypass;
     float warble;
+    float periodOfCycle = timeParam->get() / 1000.f;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        phase.setFrequency (1.f / (timeParam->get() / 1000.f));
+        phase.setFrequency (1.f / periodOfCycle);
         bypass = ! fxOnParam->get();
         warble = xPadParam->get();
     }
@@ -128,8 +129,13 @@ void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     float lfoSample;
     float warbleSample;
     //
+    double numCyclesSinceStart = effectTimeRelativeToProjectDownBeat / periodOfCycle;
+    double fractionOfCycle = numCyclesSinceStart - std::floor(numCyclesSinceStart);
+    float phaseInRadians = static_cast<float> (fractionOfCycle * 2.0 * M_PI);
+    
     for (int c = 0; c < numChannels; ++c)
     {
+        phase.setCurrentAngle(phaseInRadians,c);
         for (int n = 0; n < numSamples; ++n)
         {
             lfoSample = phase.getNextSample (c);

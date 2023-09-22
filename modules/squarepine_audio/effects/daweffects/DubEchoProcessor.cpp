@@ -95,7 +95,7 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
     primaryDelay = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
     delayBlock.setDelaySamples (primaryDelay);
     
-    phase.setFrequency (0.3f);
+    phase.setFrequency (lfoFreq);
     
     setEffectiveInTimeDomain (true);
 }
@@ -141,8 +141,13 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
     if (abs(colour) < 0.01f)
         wet = 0.f;
     
+    double numCyclesSinceStart = effectTimeRelativeToProjectDownBeat / periodOfCycle;
+    double fractionOfCycle = numCyclesSinceStart - std::floor(numCyclesSinceStart);
+    float phaseInRadians = static_cast<float> (fractionOfCycle * 2.0 * M_PI);
+    
     for (int c = 0; c < numChannels; ++c)
     {
+        phase.setCurrentAngle(phaseInRadians,c);
         for (int n = 0; n < numSamples; ++n)
         {
             float x = buffer.getWritePointer (c)[n];
