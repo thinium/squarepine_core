@@ -125,9 +125,12 @@ void FlangerProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Midi
     double fractionOfCycle = numCyclesSinceStart - std::floor(numCyclesSinceStart);
     float phaseInRadians = static_cast<float> (fractionOfCycle * 2.0 * M_PI);
     
+    // effectPhaseRelativeToProjectDownBeat needs to be set once per buffer
+    // based on the transport in Track::process
+    
     for (int c = 0; c < numChannels; ++c)
     {
-        phase.setCurrentAngle(phaseInRadians,c);
+        phase.setCurrentAngle(effectPhaseRelativeToProjectDownBeat,c);
         for (int n = 0; n < numSamples; ++n)
         {
             lfoSample = phase.getNextSample (c);

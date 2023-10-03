@@ -118,6 +118,8 @@ public:
 
     //==============================================================================
     virtual void setEffectTimeRelativeToProjectDownBeat (double timeRelativeToProjectDownBeat);
+    
+    virtual void setEffectPhaseRelativeToProjectDownBeat (double PhaseRelativeToProjectDownBeat);
     //==============================================================================
     /** Effectively enables or disables this processor. */
     void setBypass (bool shouldBeBypassed);
@@ -198,7 +200,9 @@ protected:
     class BypassParameter;
     AudioParameterBool* bypassParameter = nullptr;
 
-    double effectTimeRelativeToProjectDownBeat;
+    double effectTimeRelativeToProjectDownBeat = 0.0;
+    
+    double effectPhaseRelativeToProjectDownBeat = 0.0;
     /** */
     [[nodiscard]] std::unique_ptr<AudioParameterBool> createBypassParameter() const;
 

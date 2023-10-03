@@ -269,6 +269,21 @@ void EffectProcessorChain::setEffectTimeRelativeToProjectDownBeat (double effect
     }
 }
 
+void EffectProcessorChain::setEffectPhaseRelativeToProjectDownBeat (double effectPhaseRelativeToProjectDownBeat)
+{
+    for (auto effect : plugins)
+    {
+        if (effect != nullptr)
+        {
+            if (auto plugin = effect->plugin)
+            {
+                auto* internalProcessor = dynamic_cast<InternalProcessor*> (plugin.get());
+                internalProcessor->setEffectPhaseRelativeToProjectDownBeat (effectPhaseRelativeToProjectDownBeat);
+            }
+        }
+    }
+}
+
 //==============================================================================
 void EffectProcessorChain::prepareToPlay (const double sampleRate, const int estimatedSamplesPerBlock)
 {

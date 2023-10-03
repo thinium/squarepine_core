@@ -117,6 +117,10 @@ void InternalProcessor::setEffectTimeRelativeToProjectDownBeat(double timeRelati
     effectTimeRelativeToProjectDownBeat = timeRelativeToProjectDownBeat;
 }
 
+void InternalProcessor::setEffectPhaseRelativeToProjectDownBeat(double phaseRelativeToProjectDownBeat)
+{
+    effectPhaseRelativeToProjectDownBeat = phaseRelativeToProjectDownBeat;
+}
 //==============================================================================
 void InternalProcessor::setBypass (const bool shouldBeBypassed)
 {
