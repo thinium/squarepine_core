@@ -1,6 +1,6 @@
 //==============================================================================
-EffectProcessorChain::EffectProcessorChain (std::shared_ptr<EffectProcessorFactory> epf) :
-    factory (epf)
+EffectProcessorChain::EffectProcessorChain (std::shared_ptr<EffectProcessorFactory> epf)
+    : factory (epf)
 {
     jassert (factory != nullptr);
     plugins.reserve (10);
@@ -51,12 +51,12 @@ EffectProcessor::Ptr EffectProcessorChain::insertInternal (const Type& valueOrRe
     return {};
 }
 
-EffectProcessor::Ptr EffectProcessorChain::appendNewEffect (int source)                     { return insertInternal (source, -1, InsertionStyle::append); }
-EffectProcessor::Ptr EffectProcessorChain::appendNewEffect (const String& source)           { return insertInternal (source, -1, InsertionStyle::append); }
-EffectProcessor::Ptr EffectProcessorChain::insertNewEffect (int source, int dest)           { return insertInternal (source, dest); }
+EffectProcessor::Ptr EffectProcessorChain::appendNewEffect (int source) { return insertInternal (source, -1, InsertionStyle::append); }
+EffectProcessor::Ptr EffectProcessorChain::appendNewEffect (const String& source) { return insertInternal (source, -1, InsertionStyle::append); }
+EffectProcessor::Ptr EffectProcessorChain::insertNewEffect (int source, int dest) { return insertInternal (source, dest); }
 EffectProcessor::Ptr EffectProcessorChain::insertNewEffect (const String& source, int dest) { return insertInternal (source, dest); }
-EffectProcessor::Ptr EffectProcessorChain::replaceEffect (int source, int dest)             { return insertInternal (source, dest, InsertionStyle::replace); }
-EffectProcessor::Ptr EffectProcessorChain::replaceEffect (const String& source, int dest)   { return insertInternal (source, dest, InsertionStyle::replace); }
+EffectProcessor::Ptr EffectProcessorChain::replaceEffect (int source, int dest) { return insertInternal (source, dest, InsertionStyle::replace); }
+EffectProcessor::Ptr EffectProcessorChain::replaceEffect (const String& source, int dest) { return insertInternal (source, dest, InsertionStyle::replace); }
 
 //==============================================================================
 bool EffectProcessorChain::moveEffect (int pluginIndex, int destinationIndex)
@@ -78,9 +78,12 @@ bool EffectProcessorChain::moveEffect (int pluginIndex, PluginPositionPreset des
 {
     switch (destinationPosition)
     {
-        case PluginPositionPreset::shiftToPrevious: return moveEffect (pluginIndex, pluginIndex - 1);
-        case PluginPositionPreset::shiftToNext:     return moveEffect (pluginIndex, pluginIndex + 1);
-        default: break;
+        case PluginPositionPreset::shiftToPrevious:
+            return moveEffect (pluginIndex, pluginIndex - 1);
+        case PluginPositionPreset::shiftToNext:
+            return moveEffect (pluginIndex, pluginIndex + 1);
+        default:
+            break;
     };
 
     bool changed = false;
@@ -90,9 +93,15 @@ bool EffectProcessorChain::moveEffect (int pluginIndex, PluginPositionPreset des
 
         switch (destinationPosition)
         {
-            case PluginPositionPreset::shiftToFirst:    changed = moveItemToFront (plugins, pluginIndex); break;
-            case PluginPositionPreset::shiftToLast:     changed = moveItemToBack (plugins, pluginIndex); break;
-            default:                                    jassertfalse; break;
+            case PluginPositionPreset::shiftToFirst:
+                changed = moveItemToFront (plugins, pluginIndex);
+                break;
+            case PluginPositionPreset::shiftToLast:
+                changed = moveItemToBack (plugins, pluginIndex);
+                break;
+            default:
+                jassertfalse;
+                break;
         };
     }
 
@@ -136,7 +145,7 @@ bool EffectProcessorChain::clear()
         if (changed)
         {
             plugins.clear();
-            updateLatency(); // Doing this here to avoid doubly locking.
+            updateLatency();// Doing this here to avoid doubly locking.
         }
     }
 
@@ -160,47 +169,68 @@ EffectProcessor::Ptr EffectProcessorChain::getEffectProcessor (int index) const
 std::optional<String> EffectProcessorChain::getPluginInstanceName (int index) const
 {
     return getEffectProperty<String> (index, [&] (EffectProcessor::Ptr e)
-    {
-        if (auto p = e->plugin)
-            return p->getName();
+                                      {
+                                          if (auto p = e->plugin)
+                                              return p->getName();
 
-        return String();
-    });
+                                          return String();
+                                      });
 }
 
 std::optional<String> EffectProcessorChain::getEffectName (int index) const
 {
-    return getEffectProperty<String> (index, [] (EffectProcessor::Ptr e) { return e->name; });
+    return getEffectProperty<String> (index, [] (EffectProcessor::Ptr e)
+                                      {
+                                          return e->name;
+                                      });
 }
 
 std::optional<std::shared_ptr<AudioPluginInstance>> EffectProcessorChain::getPluginInstance (int index) const
 {
-    return getEffectProperty<std::shared_ptr<AudioPluginInstance>> (index, [&] (EffectProcessor::Ptr e) { return e->plugin; });
+    return getEffectProperty<std::shared_ptr<AudioPluginInstance>> (index, [&] (EffectProcessor::Ptr e)
+                                                                    {
+                                                                        return e->plugin;
+                                                                    });
 }
 
 std::optional<PluginDescription> EffectProcessorChain::getPluginDescription (int index) const
 {
-    return getEffectProperty<PluginDescription> (index, [&] (EffectProcessor::Ptr e) { return e->description; });
+    return getEffectProperty<PluginDescription> (index, [&] (EffectProcessor::Ptr e)
+                                                 {
+                                                     return e->description;
+                                                 });
 }
 
 std::optional<bool> EffectProcessorChain::isBypassed (int index) const
 {
-    return getEffectProperty<bool> (index, [&] (EffectProcessor::Ptr e) { return e->isBypassed.load (std::memory_order_relaxed); });
+    return getEffectProperty<bool> (index, [&] (EffectProcessor::Ptr e)
+                                    {
+                                        return e->isBypassed.load (std::memory_order_relaxed);
+                                    });
 }
 
 std::optional<float> EffectProcessorChain::getMixLevel (int index) const
 {
-    return getEffectProperty<float> (index, [&] (EffectProcessor::Ptr e) { return e->mixLevel.getTargetValue(); });
+    return getEffectProperty<float> (index, [&] (EffectProcessor::Ptr e)
+                                     {
+                                         return e->mixLevel.getTargetValue();
+                                     });
 }
 
 std::optional<juce::Point<int>> EffectProcessorChain::getLastUIPosition (int index) const
 {
-    return getEffectProperty<juce::Point<int>> (index, [&] (EffectProcessor::Ptr e) { return e->lastUIPosition; });
+    return getEffectProperty<juce::Point<int>> (index, [&] (EffectProcessor::Ptr e)
+                                                {
+                                                    return e->lastUIPosition;
+                                                });
 }
 
 std::optional<bool> EffectProcessorChain::isPluginMissing (int index) const
 {
-    return getEffectProperty<bool> (index, [&] (EffectProcessor::Ptr e) { return e->isMissing(); });
+    return getEffectProperty<bool> (index, [&] (EffectProcessor::Ptr e)
+                                    {
+                                        return e->isMissing();
+                                    });
 }
 
 bool EffectProcessorChain::loadIfMissing (int index)
@@ -241,108 +271,43 @@ bool EffectProcessorChain::setEffectProperty (int index, std::function<void (Eff
 
 bool EffectProcessorChain::setEffectName (int index, const String& name)
 {
-    return setEffectProperty (index, [&] (EffectProcessor::Ptr e) { e->name = name; });
+    return setEffectProperty (index, [&] (EffectProcessor::Ptr e)
+                              {
+                                  e->name = name;
+                              });
 }
 
 bool EffectProcessorChain::setBypass (int index, bool bypass)
 {
-    return setEffectProperty (index, [&] (EffectProcessor::Ptr e) { e->isBypassed = bypass; });
+    return setEffectProperty (index, [&] (EffectProcessor::Ptr e)
+                              {
+                                  e->isBypassed = bypass;
+                              });
 }
 
 bool EffectProcessorChain::setMixLevel (int index, float mixLevel)
 {
-    return setEffectProperty (index, [&] (EffectProcessor::Ptr e) { e->mixLevel = mixLevel; });
+    return setEffectProperty (index, [&] (EffectProcessor::Ptr e)
+                              {
+                                  e->mixLevel = mixLevel;
+                              });
 }
 
-void EffectProcessorChain::setPhaseInChainRelativeToProjectDownBeat (const BeatTime transportTimeBeat, const double transportTimeSec,
-                                                                     std::unordered_map<String, PropertyTimelinePoint> timeDomainPoints)
+void EffectProcessorChain::setTimeEffectsInChain (EffectUpdateFn f)
 {
-    for (auto effect : plugins)
+    for (const auto& effect: plugins)
     {
-        if (effect == nullptr) // if effect == nullptr, continue
+        if (effect == nullptr || effect->plugin == nullptr)// if effect == nullptr, continue
             continue;
-        
-        if (auto plugin = effect->plugin)
-        {
-            auto* internalProcessor = dynamic_cast<InternalProcessor*> (plugin.get());
-            if (internalProcessor->isEffectiveInTimeDomain())
-            {
-                const auto effectId = internalProcessor->getIdentifier();
-                const auto timeDomainPointIter = timeDomainPoints.find (effectId);
-                if (timeDomainPointIter != timeDomainPoints.end())
-                {
-                    const auto pointAtTime = timeDomainPointIter->second;
 
-                    // Do stuff with the point.
-                    double phaseRelativeToProjectDownBeat = 0.0;
-                    if (pointAtTime.source == PropertyTimelinePoint::Source::Direct)
-                    {
-                        // get time
-                        double time = 0.0;
-                        phaseRelativeToProjectDownBeat = getContinuousEffectPhaseRelativeToProjectDownBeat (transportTimeSec, time);
-                        
-                    }
-                    else
-                    {
-                        double dVal = static_cast<double> (pointAtTime.source);
-                        double shortestNotePow = static_cast<double> (PropertyTimelinePoint::Source::ShortestNote);
-                        double shortestNote = 1.0 / std::pow (2.0,7.0 - shortestNotePow);
-                        
-                        double dNumBeatsPerCycle = std::pow (2.0, dVal) * shortestNote;
-                           
-                        BeatTime numBeatsPerCycle = BeatTime (dNumBeatsPerCycle);
-                        phaseRelativeToProjectDownBeat = getSteppedEffectPhaseRelativeToProjectDownBeat (transportTimeBeat, numBeatsPerCycle);
-                    }
-                    
-                    internalProcessor->setEffectPhaseRelativeToProjectDownBeat (phaseRelativeToProjectDownBeat);
-                }
-            }
-        }
-//        if (auto plugin = effect->plugin)
-//        {
-//            auto* internalProcessor = dynamic_cast<InternalProcessor*> (plugin.get());
-//            const auto effectId = internalProcessor->getIdentifier();
-//            if (effectId.toString() == processorId)
-//                internalProcessor->setEffectPhaseRelativeToProjectDownBeat (phaseRelativeToProjectDownBeat);
-//        }
+        auto* internalProcessor = dynamic_cast<InternalProcessor*> (effect->plugin.get());
+        if (internalProcessor == nullptr || ! internalProcessor->isEffectiveInTimeDomain())
+            continue;
+
+        f (*internalProcessor);
     }
 }
 
-double EffectProcessorChain::getSteppedEffectPhaseRelativeToProjectDownBeat (const BeatTime transportTimeInBeats, BeatTime numBeatsPerCycle)
-{
-    const ScopedLock sl (lock);
-
-    //BeatTime transportTimeInBeats = transport.getTimeInBeats();
-
-    BeatTime beatTimeRelativeToProjectDownBeat = transportTimeInBeats - projectBeatGridStart;
-    
-    double numEffectCyclesSinceDownBeat = static_cast<double> (beatTimeRelativeToProjectDownBeat / numBeatsPerCycle);
-    
-    double fractionOfCycle = numEffectCyclesSinceDownBeat - std::floor (numEffectCyclesSinceDownBeat);
-    
-    double phaseInRadians = fractionOfCycle * 2.0 * M_PI;
-
-    return phaseInRadians;
-}
-
-double EffectProcessorChain::getContinuousEffectPhaseRelativeToProjectDownBeat (const double transportTimeInSec, double periodOfCycleSec)
-{
-    const ScopedLock sl (lock);
-    
-    //double transportTimeInSec = transport.getTimeSeconds();
-
-    double projectBeatGridStartSec = PropertyTimelineHelpers::convertBeatTimeToSeconds (projectBeatGridStart,
-                                                                                        tempoAutomationDuplicate,
-                                                                                        transport.getActiveTempo());
-
-    double effectTimeRelativeToProjectDownBeat = transportTimeInSec - projectBeatGridStartSec;
-
-    double numCyclesSinceStart = effectTimeRelativeToProjectDownBeat / periodOfCycleSec;
-    double fractionOfCycle = numCyclesSinceStart - std::floor(numCyclesSinceStart);
-    double phaseInRadians = fractionOfCycle * 2.0 * M_PI;
-    
-    return phaseInRadians;
-}
 
 //==============================================================================
 void EffectProcessorChain::prepareToPlay (const double sampleRate, const int estimatedSamplesPerBlock)
@@ -356,7 +321,7 @@ void EffectProcessorChain::prepareToPlay (const double sampleRate, const int est
     floatBuffers.prepare (numChans, estimatedSamplesPerBlock);
     doubleBuffers.prepare (numChans, estimatedSamplesPerBlock);
 
-    for (auto effect : plugins)
+    for (auto effect: plugins)
     {
         if (effect != nullptr)
         {
@@ -376,7 +341,7 @@ void EffectProcessorChain::updateLatency()
     updateChannelCount();
 
     // N.B.: This probably isn't accurate at all (@todo ?)
-    for (auto effect : plugins)
+    for (auto effect: plugins)
         if (auto plugin = effect->plugin)
             setLatencySamples (getLatencySamples() + plugin->getLatencySamples());
 }
@@ -385,7 +350,7 @@ void EffectProcessorChain::updateChannelCount()
 {
     int newRequiredChannels = 0;
 
-    for (auto effect : plugins)
+    for (auto effect: plugins)
         newRequiredChannels = jmax (newRequiredChannels, effect->description.numInputChannels, effect->description.numOutputChannels);
 
     requiredChannels = newRequiredChannels;
@@ -409,7 +374,7 @@ void EffectProcessorChain::processInternal (juce::AudioBuffer<FloatType>& source
 
     addFrom (bufferPackage.mixingBuffer, source, channels, numSamples);
 
-    for (auto effect : plugins)
+    for (auto effect: plugins)
     {
         if (effect == nullptr || ! effect->canBeProcessed())
             continue;
@@ -444,7 +409,7 @@ bool EffectProcessorChain::isWholeChainBypassed() const
 {
     size_t numBypassedPlugins = 0;
 
-    for (auto effect : plugins)
+    for (auto effect: plugins)
         if (effect == nullptr || ! effect->canBeProcessed())
             ++numBypassedPlugins;
 
@@ -471,7 +436,7 @@ void EffectProcessorChain::process (juce::AudioBuffer<FloatType>& buffer, MidiBu
     }
 }
 
-void EffectProcessorChain::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midiMessages)  { process<float> (buffer, midiMessages, floatBuffers); }
+void EffectProcessorChain::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midiMessages) { process<float> (buffer, midiMessages, floatBuffers); }
 void EffectProcessorChain::processBlock (juce::AudioBuffer<double>& buffer, MidiBuffer& midiMessages) { process<double> (buffer, midiMessages, doubleBuffers); }
 
 //==============================================================================
@@ -480,7 +445,7 @@ double EffectProcessorChain::getTailLengthSeconds() const
     const ScopedLock sl (getCallbackLock());
     auto largestTailLength = 0.0;
 
-    for (auto effect : plugins)
+    for (auto effect: plugins)
         if (effect != nullptr && effect->canBeProcessed())
             if (auto plugin = effect->plugin)
                 largestTailLength = jmax (largestTailLength, plugin->getTailLengthSeconds());
@@ -488,29 +453,29 @@ double EffectProcessorChain::getTailLengthSeconds() const
     return largestTailLength;
 }
 
-void EffectProcessorChain::releaseResources()           { loopThroughEffectsAndCall<&AudioProcessor::releaseResources>(); }
-void EffectProcessorChain::reset()                      { loopThroughEffectsAndCall<&AudioProcessor::reset>(); }
-void EffectProcessorChain::numChannelsChanged()         { loopThroughEffectsAndCall<&AudioProcessor::numChannelsChanged>(); }
-void EffectProcessorChain::numBusesChanged()            { loopThroughEffectsAndCall<&AudioProcessor::numBusesChanged>(); }
-void EffectProcessorChain::processorLayoutsChanged()    { loopThroughEffectsAndCall<&AudioProcessor::processorLayoutsChanged>(); }
-const String EffectProcessorChain::getName() const      { return TRANS ("Effect Processor Chain"); }
+void EffectProcessorChain::releaseResources() { loopThroughEffectsAndCall<&AudioProcessor::releaseResources>(); }
+void EffectProcessorChain::reset() { loopThroughEffectsAndCall<&AudioProcessor::reset>(); }
+void EffectProcessorChain::numChannelsChanged() { loopThroughEffectsAndCall<&AudioProcessor::numChannelsChanged>(); }
+void EffectProcessorChain::numBusesChanged() { loopThroughEffectsAndCall<&AudioProcessor::numBusesChanged>(); }
+void EffectProcessorChain::processorLayoutsChanged() { loopThroughEffectsAndCall<&AudioProcessor::processorLayoutsChanged>(); }
+const String EffectProcessorChain::getName() const { return TRANS ("Effect Processor Chain"); }
 
 //==============================================================================
 namespace ChainIds
 {
-    #define CREATE_ATTRIBUTE(name) \
-        static const String name = JUCE_STRINGIFY (name);
+#define CREATE_ATTRIBUTE(name) \
+static const String name = JUCE_STRINGIFY (name);
 
-    CREATE_ATTRIBUTE (rootBypassed)
-    CREATE_ATTRIBUTE (effectRoot)
-    CREATE_ATTRIBUTE (effectName)
-    CREATE_ATTRIBUTE (effectBypassed)
-    CREATE_ATTRIBUTE (effectMixLevel)
-    CREATE_ATTRIBUTE (effectUIX)
-    CREATE_ATTRIBUTE (effectUIY)
-    CREATE_ATTRIBUTE (effectState)
+CREATE_ATTRIBUTE (rootBypassed)
+CREATE_ATTRIBUTE (effectRoot)
+CREATE_ATTRIBUTE (effectName)
+CREATE_ATTRIBUTE (effectBypassed)
+CREATE_ATTRIBUTE (effectMixLevel)
+CREATE_ATTRIBUTE (effectUIX)
+CREATE_ATTRIBUTE (effectUIY)
+CREATE_ATTRIBUTE (effectState)
 
-    #undef CREATE_ATTRIBUTE
+#undef CREATE_ATTRIBUTE
 }
 
 void EffectProcessorChain::getStateInformation (MemoryBlock& destData)
@@ -518,7 +483,7 @@ void EffectProcessorChain::getStateInformation (MemoryBlock& destData)
     XmlElement effectChainElement (getIdentifier().toString());
     effectChainElement.setAttribute (ChainIds::rootBypassed, InternalProcessor::isBypassed() ? 1 : 0);
 
-    for (auto effect : plugins)
+    for (auto effect: plugins)
         if (effect != nullptr)
             effectChainElement.addChildElement (createElementForEffect (effect));
 
@@ -554,7 +519,7 @@ XmlElement* EffectProcessorChain::createElementForEffect (EffectProcessor::Ptr e
 void EffectProcessorChain::setStateInformation (const void* const data, const int sizeInBytes)
 {
     clear();
-    InternalProcessor::setBypass (false); // To reset back to a normal state
+    InternalProcessor::setBypass (false);// To reset back to a normal state
 
     const ScopedBypass sb (*this);
 
@@ -574,7 +539,7 @@ void EffectProcessorChain::setStateInformation (const void* const data, const in
     {
         InternalProcessor::setBypass (chainElement->getBoolAttribute (ChainIds::rootBypassed));
 
-        for (auto* e : chainElement->getChildWithTagNameIterator (ChainIds::effectRoot))
+        for (auto* e: chainElement->getChildWithTagNameIterator (ChainIds::effectRoot))
             plugins.emplace_back (createEffectProcessorFromXML (e));
 
         updateLatency();

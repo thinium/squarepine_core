@@ -163,15 +163,10 @@ public:
         @returns true if anything changed.
     */
     bool setMixLevel (int index, float mixLevel);
-    
-    class BeatTime;
-    class PropertyTimelinePoint;
-    class TransportState;
-    void setPhaseInChainRelativeToProjectDownBeat (const BeatTime transportTimeBeat, const double transportTimeSec,
-                                                   std::unordered_map<String, PropertyTimelinePoint> timeDomainPoints);
 
-    double getSteppedEffectPhaseRelativeToProjectDownBeat (const BeatTime transportTimeBeat, BeatTime numBeatsPerCycle);
-    double getContinuousEffectPhaseRelativeToProjectDownBeat (const double transportTimeSec, double periodOfCycleSec);
+    using EffectUpdateFn = std::function<void (InternalProcessor&)>;
+    void setTimeEffectsInChain (EffectUpdateFn f);
+
     //==============================================================================
     /** Obtain the name of a plugin that exists within the array of effect plugins
 
@@ -263,7 +258,7 @@ public:
     /** @internal */
     [[nodiscard]] double getTailLengthSeconds() const override;
     /** @internal */
-    [[nodiscard]] Identifier getIdentifier() const override{ return "EffectProcessorChain"; }
+    [[nodiscard]] Identifier getIdentifier() const override { return "EffectProcessorChain"; }
     /** @internal */
     [[nodiscard]] const String getName() const override;
     /** @internal */
@@ -274,7 +269,6 @@ public:
     void getStateInformation (MemoryBlock&) override;
     /** @internal */
     void setStateInformation (const void*, int) override;
-
 private:
     //==============================================================================
     template<typename FloatType>
@@ -284,13 +278,13 @@ private:
 
         void clear() noexcept
         {
-            for (auto& buff : buffers)
+            for (auto& buff: buffers)
                 buff->clear();
         }
 
         void prepare (int numChannels, int numSamples)
         {
-            for (auto& buff : buffers)
+            for (auto& buff: buffers)
                 buff->setSize (numChannels, numSamples, false, true, true);
 
             clear();
@@ -330,8 +324,7 @@ private:
     void process (juce::AudioBuffer<FloatType>&, MidiBuffer&, BufferPackage<FloatType>&);
 
     template<typename FloatType>
-    void processInternal (juce::AudioBuffer<FloatType>& source, MidiBuffer& midiMessages,
-                          BufferPackage<FloatType>& bufferPackage, int numChannels, int numSamples);
+    void processInternal (juce::AudioBuffer<FloatType>& source, MidiBuffer& midiMessages, BufferPackage<FloatType>& bufferPackage, int numChannels, int numSamples);
 
     template<typename Type>
     [[nodiscard]] EffectProcessor::Ptr insertInternal (const Type& valueOrRef, int destinationIndex, InsertionStyle insertionStyle = InsertionStyle::insert);
@@ -351,7 +344,7 @@ private:
     template<void (AudioProcessor::*function)()>
     void loopThroughEffectsAndCall()
     {
-        for (auto effect : plugins)
+        for (auto effect: plugins)
             if (effect != nullptr)
                 if (auto* plugin = effect->plugin.get())
                     (plugin->*function)();
