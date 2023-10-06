@@ -2,10 +2,12 @@ inline Component* realGetComponent (Component& p, Point<int> screenPos)
 {
     if (p.getScreenBounds().contains (screenPos))
     {
-        for (auto* c : p.getChildren())
+        for (auto* c: p.getChildren())
             if (auto* r = realGetComponent (*c, screenPos))
-                return r;
-
+            {
+                if (r->getName() != "overlay")
+                    return r;
+            }
         return &p;
     }
 
