@@ -117,8 +117,6 @@ public:
     void removeProperty (const Identifier&, UndoManager* undoManager = nullptr);
 
     //==============================================================================
-    virtual void setEffectTimeRelativeToProjectDownBeat (double timeRelativeToProjectDownBeat);
-    
     virtual void setEffectPhaseRelativeToProjectDownBeat (double PhaseRelativeToProjectDownBeat);
     //==============================================================================
     /** Effectively enables or disables this processor. */

@@ -254,34 +254,94 @@ bool EffectProcessorChain::setMixLevel (int index, float mixLevel)
     return setEffectProperty (index, [&] (EffectProcessor::Ptr e) { e->mixLevel = mixLevel; });
 }
 
-void EffectProcessorChain::setEffectTimeRelativeToProjectDownBeat (double effectTimeRelativeToProjectDownBeat)
+void EffectProcessorChain::setPhaseInChainRelativeToProjectDownBeat (const BeatTime transportTimeBeat, const double transportTimeSec,
+                                                                     std::unordered_map<String, PropertyTimelinePoint> timeDomainPoints)
 {
     for (auto effect : plugins)
     {
-        if (effect != nullptr)
+        if (effect == nullptr) // if effect == nullptr, continue
+            continue;
+        
+        if (auto plugin = effect->plugin)
         {
-            if (auto plugin = effect->plugin)
+            auto* internalProcessor = dynamic_cast<InternalProcessor*> (plugin.get());
+            if (internalProcessor->isEffectiveInTimeDomain())
             {
-                auto* internalProcessor = dynamic_cast<InternalProcessor*> (plugin.get());
-                internalProcessor->setEffectTimeRelativeToProjectDownBeat (effectTimeRelativeToProjectDownBeat);
+                const auto effectId = internalProcessor->getIdentifier();
+                const auto timeDomainPointIter = timeDomainPoints.find (effectId);
+                if (timeDomainPointIter != timeDomainPoints.end())
+                {
+                    const auto pointAtTime = timeDomainPointIter->second;
+
+                    // Do stuff with the point.
+                    double phaseRelativeToProjectDownBeat = 0.0;
+                    if (pointAtTime.source == PropertyTimelinePoint::Source::Direct)
+                    {
+                        // get time
+                        double time = 0.0;
+                        phaseRelativeToProjectDownBeat = getContinuousEffectPhaseRelativeToProjectDownBeat (transportTimeSec, time);
+                        
+                    }
+                    else
+                    {
+                        double dVal = static_cast<double> (pointAtTime.source);
+                        double shortestNotePow = static_cast<double> (PropertyTimelinePoint::Source::ShortestNote);
+                        double shortestNote = 1.0 / std::pow (2.0,7.0 - shortestNotePow);
+                        
+                        double dNumBeatsPerCycle = std::pow (2.0, dVal) * shortestNote;
+                           
+                        BeatTime numBeatsPerCycle = BeatTime (dNumBeatsPerCycle);
+                        phaseRelativeToProjectDownBeat = getSteppedEffectPhaseRelativeToProjectDownBeat (transportTimeBeat, numBeatsPerCycle);
+                    }
+                    
+                    internalProcessor->setEffectPhaseRelativeToProjectDownBeat (phaseRelativeToProjectDownBeat);
+                }
             }
         }
+//        if (auto plugin = effect->plugin)
+//        {
+//            auto* internalProcessor = dynamic_cast<InternalProcessor*> (plugin.get());
+//            const auto effectId = internalProcessor->getIdentifier();
+//            if (effectId.toString() == processorId)
+//                internalProcessor->setEffectPhaseRelativeToProjectDownBeat (phaseRelativeToProjectDownBeat);
+//        }
     }
 }
 
-void EffectProcessorChain::setEffectPhaseRelativeToProjectDownBeat (double effectPhaseRelativeToProjectDownBeat)
+double EffectProcessorChain::getSteppedEffectPhaseRelativeToProjectDownBeat (const BeatTime transportTimeInBeats, BeatTime numBeatsPerCycle)
 {
-    for (auto effect : plugins)
-    {
-        if (effect != nullptr)
-        {
-            if (auto plugin = effect->plugin)
-            {
-                auto* internalProcessor = dynamic_cast<InternalProcessor*> (plugin.get());
-                internalProcessor->setEffectPhaseRelativeToProjectDownBeat (effectPhaseRelativeToProjectDownBeat);
-            }
-        }
-    }
+    const ScopedLock sl (lock);
+
+    //BeatTime transportTimeInBeats = transport.getTimeInBeats();
+
+    BeatTime beatTimeRelativeToProjectDownBeat = transportTimeInBeats - projectBeatGridStart;
+    
+    double numEffectCyclesSinceDownBeat = static_cast<double> (beatTimeRelativeToProjectDownBeat / numBeatsPerCycle);
+    
+    double fractionOfCycle = numEffectCyclesSinceDownBeat - std::floor (numEffectCyclesSinceDownBeat);
+    
+    double phaseInRadians = fractionOfCycle * 2.0 * M_PI;
+
+    return phaseInRadians;
+}
+
+double EffectProcessorChain::getContinuousEffectPhaseRelativeToProjectDownBeat (const double transportTimeInSec, double periodOfCycleSec)
+{
+    const ScopedLock sl (lock);
+    
+    //double transportTimeInSec = transport.getTimeSeconds();
+
+    double projectBeatGridStartSec = PropertyTimelineHelpers::convertBeatTimeToSeconds (projectBeatGridStart,
+                                                                                        tempoAutomationDuplicate,
+                                                                                        transport.getActiveTempo());
+
+    double effectTimeRelativeToProjectDownBeat = transportTimeInSec - projectBeatGridStartSec;
+
+    double numCyclesSinceStart = effectTimeRelativeToProjectDownBeat / periodOfCycleSec;
+    double fractionOfCycle = numCyclesSinceStart - std::floor(numCyclesSinceStart);
+    double phaseInRadians = fractionOfCycle * 2.0 * M_PI;
+    
+    return phaseInRadians;
 }
 
 //==============================================================================

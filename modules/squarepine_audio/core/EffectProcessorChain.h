@@ -164,10 +164,14 @@ public:
     */
     bool setMixLevel (int index, float mixLevel);
     
-    void setEffectTimeRelativeToProjectDownBeat (double effectTimeRelativeToProjectDownBeat) override;
-    
-    void setEffectPhaseRelativeToProjectDownBeat (double effectPhaseRelativeToProjectDownBeat) override;
+    class BeatTime;
+    class PropertyTimelinePoint;
+    class TransportState;
+    void setPhaseInChainRelativeToProjectDownBeat (const BeatTime transportTimeBeat, const double transportTimeSec,
+                                                   std::unordered_map<String, PropertyTimelinePoint> timeDomainPoints);
 
+    double getSteppedEffectPhaseRelativeToProjectDownBeat (const BeatTime transportTimeBeat, BeatTime numBeatsPerCycle);
+    double getContinuousEffectPhaseRelativeToProjectDownBeat (const double transportTimeSec, double periodOfCycleSec);
     //==============================================================================
     /** Obtain the name of a plugin that exists within the array of effect plugins
 
