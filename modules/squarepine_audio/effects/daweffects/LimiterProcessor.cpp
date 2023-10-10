@@ -394,8 +394,10 @@ float LimiterProcessor::getOutputGain()
     return 20.f * log10 (outputGain);
 }
 
-float LimiterProcessor::getGainReduction()
+float LimiterProcessor::getGainReduction (bool linear)
 {
+    if (linear)
+        return linA;
     // This method can be find the amount of gain reduction at a given time
     // if the interface has a meter or display.
     return 20.f * log10 (linA);
