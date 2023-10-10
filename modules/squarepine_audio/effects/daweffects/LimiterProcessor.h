@@ -44,8 +44,9 @@ public:
     void setEnhanceOn (bool isOn) { enhanceIsOn = isOn; }
     void setTruePeakOn (bool isOn) { truePeakIsOn = isOn; }
     void setAutoCompOn (bool isOn) { autoCompIsOn = isOn; }
+    void setOverSamplingLevel (int level) { OSFactor = level; }
 
-    float getGainReduction();
+    float getGainReduction (bool linear);
 private:
     bool bypassed = false;
 
