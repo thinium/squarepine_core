@@ -106,12 +106,30 @@ private:
     SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
     SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
 
+    float steppedDelayTime1 = 0.f;
+    float steppedDelayTime2 = 0.f;
+    
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
 
-    FractionalDelay delayUnit;
+    ModulatedDelay delayUnit;
+    ModulatedDelay delayUnit2; // used for stepped processing for cross-fade to avoid doppler changes
+    
     float sampleRate = 44100.f;
+    
+    float getDelayedSample (float x, int channel);
+    
+    float getDelayFromDoubleBuffer (float x, int channel);
+    bool usingDelayBuffer1 = true;
+    bool duringCrossfade = false;
+    float getDelayDuringCrossfade (float x, int channel);
+    const int LENGTHOFCROSSFADE = 1024;
+    int crossfadeIndex = 0;
+    
+    bool crossFadeFrom1to2 = true;
+    
+    
 };
 
 }

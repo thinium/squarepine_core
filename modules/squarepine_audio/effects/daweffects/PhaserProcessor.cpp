@@ -129,9 +129,6 @@ void PhaserProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiB
     float lfoSample;
     float warbleSample;
     //
-    double numCyclesSinceStart = effectTimeRelativeToProjectDownBeat / periodOfCycle;
-    double fractionOfCycle = numCyclesSinceStart - std::floor(numCyclesSinceStart);
-    float phaseInRadians = static_cast<float> (fractionOfCycle * 2.0 * M_PI);
     
     // effectPhaseRelativeToProjectDownBeat needs to be set once per buffer
     // based on the transport in Track::process

@@ -206,9 +206,17 @@ DelayProcessor::DelayProcessor (int idNum)
                                                                      ;
                                                                  });
 
-    delayUnit.setDelaySamples (200 * 48);
+    
+    float initialDelayTime = 200.f * 48.f;
+    
+    delayUnit.setDelaySamples (initialDelayTime);
+    delayUnit2.setDelaySamples (initialDelayTime);
+    
+    steppedDelayTime1 = initialDelayTime;
+    steppedDelayTime1 = initialDelayTime;
+    
     wetDry.setTargetValue (0.5);
-    delayTime.setTargetValue (200 * 48);
+    delayTime.setTargetValue (initialDelayTime);
 
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
@@ -245,8 +253,9 @@ void DelayProcessor::prepareToPlay (double Fs, int bufferSize)
     BandProcessor::prepareToPlay (Fs, bufferSize);
 
     delayUnit.setFs ((float) Fs);
+    delayUnit2.setFs ((float) Fs);
     wetDry.reset (Fs, 0.5f);
-    delayTime.reset (Fs, 0.5f);
+    delayTime.reset (Fs, 1.f);
     setRateAndBufferSizeDetails (Fs, bufferSize);
 
     sampleRate = static_cast<float> (Fs);
@@ -270,13 +279,13 @@ void DelayProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBu
     float dry, wet, x, y;
     for (int s = 0; s < numSamples; ++s)
     {
-        delayUnit.setDelaySamples (delayTime.getNextValue());
+        
         wet = wetDry.getNextValue();
         dry = 1.f - wet;
         for (int c = 0; c < numChannels; ++c)
         {
             x = multibandBuffer.getWritePointer (c)[s];
-            y = delayUnit.processSample (x, c);
+            y = getDelayedSample(x, c);
             multibandBuffer.getWritePointer (c)[s] = wet * y;
             buffer.getWritePointer (c)[s] *= dry;
         }
@@ -315,13 +324,92 @@ void DelayProcessor::parameterValueChanged (int paramIndex, float value)
         {
             float samplesOfDelay = (value / 1000.f) * sampleRate;
             delayTime.setTargetValue (samplesOfDelay);
+            
+            if (isSteppedTime)
+            {
+                // if we are currently using buffer1, then we change the time of buffer2 before crossfade
+                if (usingDelayBuffer1)
+                    delayUnit2.setDelaySamples (samplesOfDelay);
+                else
+                    delayUnit.setDelaySamples (samplesOfDelay);
+                
+                duringCrossfade = true; // if we are using steppedTime, and a change to time has occurred, then we need to start a crossfade
+                crossfadeIndex = 0;
+            }
+                
             break;
         }
     }
 }
+
 void DelayProcessor::releaseResources()
 {
     delayUnit.clearDelay();
+}
+
+
+float DelayProcessor::getDelayedSample (float x, int channel)
+{
+    if (isSteppedTime)
+    {
+        return getDelayFromDoubleBuffer (x, channel);
+    }
+    else
+    {
+        // If we are using continuous time, then we don't do the double-buffer switching
+        delayUnit.setDelaySamples (delayTime.getNextValue());
+        return delayUnit.processSample (x, channel);
+    }
+}
+
+float DelayProcessor::getDelayFromDoubleBuffer (float x, int channel)
+{
+    if (duringCrossfade)
+    {
+        return getDelayDuringCrossfade (x, channel);
+    }
+    else if (usingDelayBuffer1)
+    {
+        delayUnit2.processSample (x, channel);
+        return delayUnit.processSample (x, channel);
+    }
+    else
+    {
+        // case for just using the 2nd delay buffer
+        delayUnit.processSample (x, channel);
+        return delayUnit2.processSample (x, channel);
+    }
+}
+
+float DelayProcessor::getDelayDuringCrossfade (float x, int channel)
+{
+    float a = delayUnit.processSample (x, channel);
+    float b = delayUnit2.processSample (x, channel);
+    
+    float amp = static_cast<float> (crossfadeIndex) / static_cast<float> (LENGTHOFCROSSFADE);
+    float ampA;
+    float ampB;
+    if (crossFadeFrom1to2)
+    {
+        ampA = 1.f - amp;
+        ampB = amp;
+    }
+    else
+    {
+        // crossfade from delay buffer 2 to delay buffer 1
+        ampA = amp;
+        ampB = 1.f - amp;
+    }
+    crossfadeIndex++;
+    if (crossfadeIndex == LENGTHOFCROSSFADE)
+    {
+        crossfadeIndex = 0;
+        duringCrossfade = false; // we've reached the end of this crossfade for this time change
+        crossFadeFrom1to2 = !crossFadeFrom1to2; // next time we do a crossfade, it should be from the opposite buffers
+        usingDelayBuffer1 = !usingDelayBuffer1;
+    }
+    
+    return ampA * a + ampB * b;
 }
 
 }

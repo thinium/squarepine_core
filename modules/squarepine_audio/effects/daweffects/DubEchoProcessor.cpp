@@ -141,9 +141,6 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
     if (abs(colour) < 0.01f)
         wet = 0.f;
     
-    double numCyclesSinceStart = effectTimeRelativeToProjectDownBeat / periodOfCycle;
-    double fractionOfCycle = numCyclesSinceStart - std::floor(numCyclesSinceStart);
-    float phaseInRadians = static_cast<float> (fractionOfCycle * 2.0 * M_PI);
     // effectPhaseRelativeToProjectDownBeat needs to be set once per buffer
     // based on the transport in Track::process
     for (int c = 0; c < numChannels; ++c)

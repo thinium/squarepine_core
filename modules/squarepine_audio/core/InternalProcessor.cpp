@@ -117,6 +117,12 @@ void InternalProcessor::setEffectPhaseRelativeToProjectDownBeat(double phaseRela
 {
     effectPhaseRelativeToProjectDownBeat = phaseRelativeToProjectDownBeat;
 }
+
+void InternalProcessor::setIsInSteppedTimeMode(bool isInSteppedTimeMode)
+{
+    isSteppedTime = isInSteppedTimeMode;
+}
+
 //==============================================================================
 void InternalProcessor::setBypass (const bool shouldBeBypassed)
 {
