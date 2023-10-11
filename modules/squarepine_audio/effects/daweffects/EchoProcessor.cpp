@@ -39,10 +39,11 @@ EchoProcessor::EchoProcessor (int idNum)
                                                                      ;
                                                                  });
 
-    
-    delayUnit.setDelaySamples (200 * 48);
+    float initialDelayTime = 200.f * 48.f;
+    delayUnit.setDelaySamples (initialDelayTime);
+    delayUnit2.setDelaySamples (initialDelayTime);
     wetDry.setTargetValue (0.5);
-    delayTime.setTargetValue (200 * 48);
+    delayTime.setTargetValue (initialDelayTime);
 
     wetDryParam = wetdry.get();
     wetDryParam->addListener (this);
@@ -81,8 +82,9 @@ void EchoProcessor::prepareToPlay (double Fs, int bufferSize)
     const ScopedLock lock (getCallbackLock());
 
     delayUnit.setFs ((float) Fs);
+    delayUnit2.setFs ((float) Fs);
     wetDry.reset (Fs, 0.5f);
-    delayTime.reset (Fs, 0.5f);
+    delayTime.reset (Fs, 1.f);
     setRateAndBufferSizeDetails (Fs, bufferSize);
 
     sampleRate = Fs;
@@ -94,7 +96,6 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
     const auto numSamples = buffer.getNumSamples();
 
     bool bypass;
-    float feedbackAmp = 0.6f;// appears to be constant from hardware demo
     {
         const ScopedLock lock (getCallbackLock());
         bypass = ! fxOnParam->get();
@@ -115,8 +116,9 @@ void EchoProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuf
         for (int c = 0; c < numChannels; ++c)
         {
             x = multibandBuffer.getWritePointer (c)[s];
-            y = (z[c] * feedbackAmp) + x;
-            z[c] = delayUnit.processSample (y, c);
+            y = getDelayedSample(x, c);
+            //y = (z[c] * feedbackAmp) + x;
+            //z[c] = delayUnit.processSample (y, c);
             multibandBuffer.getWritePointer (c)[s] = wet * y;
             buffer.getWritePointer (c)[s] *= (1.f - wet);
         }
@@ -156,9 +158,99 @@ void EchoProcessor::parameterValueChanged (int paramIndex, float value)
         {
             float samplesOfDelay = value / 1000.f * static_cast<float> (sampleRate);
             delayTime.setTargetValue (samplesOfDelay);
+            
+            if (isSteppedTime)
+            {
+                // if we are currently using buffer1, then we change the time of buffer2 before crossfade
+                if (usingDelayBuffer1)
+                    delayUnit2.setDelaySamples (samplesOfDelay);
+                else
+                    delayUnit.setDelaySamples (samplesOfDelay);
+                
+                duringCrossfade = true; // if we are using steppedTime, and a change to time has occurred, then we need to start a crossfade
+                crossfadeIndex = 0;
+            }
+            
             break;
         }
     }
 }
+
+float EchoProcessor::getDelayedSample (float x, int c)
+{
+    if (isSteppedTime)
+    {
+        return getDelayFromDoubleBuffer (x, c);
+    }
+    else
+    {
+        // If we are using continuous time, then we don't do the double-buffer switching
+        delayUnit.setDelaySamples (delayTime.getNextValue());
+        float y = (z[c] * FEEDBACKAMP) + x;
+        z[c] = delayUnit.processSample (y, c);
+        return y;
+    }
+}
+
+float EchoProcessor::getDelayFromDoubleBuffer (float x, int c)
+{
+    if (duringCrossfade)
+    {
+        return getDelayDuringCrossfade (x, c);
+    }
+    else if (usingDelayBuffer1)
+    {
+        float y = (z[c] * FEEDBACKAMP) + x;
+        z[c] = delayUnit.processSample (y, c);
+        float y2 = (zUnit2[c] * FEEDBACKAMP) + 0.f;
+        zUnit2[c] = delayUnit2.processSample (y2, c);
+        
+        return y + y2;
+    }
+    else
+    {
+        // case for just using the 2nd delay buffer
+        float y2 = (zUnit2[c] * FEEDBACKAMP) + x;
+        zUnit2[c] = delayUnit2.processSample (y2, c);
+        float y = (z[c] * FEEDBACKAMP) + 0.f;
+        z[c] = delayUnit.processSample (y, c);
+        return y + y2;
+    }
+}
+
+float EchoProcessor::getDelayDuringCrossfade (float x, int c)
+{
+    float amp = static_cast<float> (crossfadeIndex) / static_cast<float> (LENGTHOFCROSSFADE);
+    float ampA;
+    float ampB;
+    if (crossFadeFrom1to2)
+    {
+        ampA = 1.f - amp;
+        ampB = amp;
+    }
+    else
+    {
+        // crossfade from delay buffer 2 to delay buffer 1
+        ampA = amp;
+        ampB = 1.f - amp;
+    }
+    crossfadeIndex++;
+    if (crossfadeIndex == LENGTHOFCROSSFADE)
+    {
+        crossfadeIndex = 0;
+        duringCrossfade = false; // we've reached the end of this crossfade for this time change
+        crossFadeFrom1to2 = !crossFadeFrom1to2; // next time we do a crossfade, it should be from the opposite buffers
+        usingDelayBuffer1 = !usingDelayBuffer1;
+    }
+    
+    float y = (z[c] * FEEDBACKAMP) + ampA * x;
+    z[c] = delayUnit.processSample (y, c);
+    
+    float y2 = (zUnit2[c] * FEEDBACKAMP) + ampB * x;
+    zUnit2[c] = delayUnit2.processSample (y2, c);
+    
+    return y + y2;
+}
+
 
 }

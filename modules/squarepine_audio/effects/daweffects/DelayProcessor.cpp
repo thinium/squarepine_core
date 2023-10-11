@@ -212,9 +212,6 @@ DelayProcessor::DelayProcessor (int idNum)
     delayUnit.setDelaySamples (initialDelayTime);
     delayUnit2.setDelaySamples (initialDelayTime);
     
-    steppedDelayTime1 = initialDelayTime;
-    steppedDelayTime1 = initialDelayTime;
-    
     wetDry.setTargetValue (0.5);
     delayTime.setTargetValue (initialDelayTime);
 

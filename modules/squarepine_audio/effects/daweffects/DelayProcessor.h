@@ -105,9 +105,6 @@ private:
 
     SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
     SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
-
-    float steppedDelayTime1 = 0.f;
-    float steppedDelayTime2 = 0.f;
     
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
