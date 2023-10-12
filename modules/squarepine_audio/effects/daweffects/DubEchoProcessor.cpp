@@ -91,9 +91,17 @@ DubEchoProcessor::DubEchoProcessor (int idNum)
     hpf.setFreq (400.f);
     lpf.setFilterType (DigitalFilter::FilterType::LPF);
     lpf.setFreq (10000.f);
+    hpf2.setFilterType (DigitalFilter::FilterType::HPF);
+    hpf2.setFreq (400.f);
+    lpf2.setFilterType (DigitalFilter::FilterType::LPF);
+    lpf2.setFreq (10000.f);
 
-    primaryDelay = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
-    delayBlock.setDelaySamples (primaryDelay);
+    float initialDelayTime = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
+    delayTime.setTargetValue (initialDelayTime);
+    delayBlock.setDelaySamples (initialDelayTime);
+    delayUnit2.setDelaySamples (initialDelayTime);
+    unit1SteppedDelayTime = initialDelayTime;
+    unit2SteppedDelayTime = initialDelayTime;
     
     phase.setFrequency (lfoFreq);
     
@@ -114,6 +122,8 @@ void DubEchoProcessor::prepareToPlay (double Fs, int /* bufferSize */)
 {
     sampleRate = Fs;
     delayBlock.setFs (static_cast<float> (sampleRate));
+    delayUnit2.setFs (static_cast<float> (sampleRate));
+    delayTime.reset (Fs, 1.f);
     hpf.setFs (sampleRate);
     lpf.setFs (sampleRate);
 }
@@ -123,14 +133,12 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
     const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
 
-    float wet;
-    float feedbackGain;
     bool bypass;
     float colour;
     {
         const ScopedLock sl (getCallbackLock());
-        wet = wetDryParam->get();
-        feedbackGain = feedbackParam->get();
+        wetTarget = wetDryParam->get();
+        feedbackTarget = feedbackParam->get();
         bypass = ! fxOnParam->get();
         colour = echoColourParam->get();
     }
@@ -139,30 +147,16 @@ void DubEchoProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffe
         return;
 
     if (abs(colour) < 0.01f)
-        wet = 0.f;
+        wetTarget = 0.f;
     
-    // effectPhaseRelativeToProjectDownBeat needs to be set once per buffer
-    // based on the transport in Track::process
     for (int c = 0; c < numChannels; ++c)
     {
-        phase.setCurrentAngle(effectPhaseRelativeToProjectDownBeat,c);
+        //phase.setCurrentAngle(effectPhaseRelativeToProjectDownBeat,c);
         for (int n = 0; n < numSamples; ++n)
         {
             float x = buffer.getWritePointer (c)[n];
-            float y = x + wetSmooth[c] * feedbackSample[c];
+            float y = getDelayedSample(x,c);
 
-            auto y_filter = hpf.processSample (y, c);
-            y_filter = lpf.processSample (y_filter, c);
-            //y_filter = hpf.processSample (y_filter, c);
-            
-            float lfoSample = phase.getNextSample (c);
-            float depth = 10.f;
-            float modDelay = static_cast<float> (depth * sin (lfoSample));
-            delayBlock.setDelaySamples (primaryDelay + modDelay);
-            feedbackSample[c] = gainSmooth[c] * delayBlock.processSample (y_filter, c);
-
-            gainSmooth[c] = 0.999f * gainSmooth[c] + 0.001f * feedbackGain;
-            wetSmooth[c] = 0.9999f * wetSmooth[c] + 0.0001f * wet;
             buffer.getWritePointer (c)[n] = y;
         }
     }
@@ -195,6 +189,8 @@ void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
                 float freqHz = 2.f * std::powf (10.f, value + 2.f);// 200 - 2000
                 hpf.setFreq (freqHz);
                 lpf.setFreq (11000.f);
+                hpf2.setFreq (freqHz);
+                lpf2.setFreq (11000.f);
             }
             else
             {
@@ -202,6 +198,8 @@ void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
                 float freqHz = std::powf (10.f, normValue + 3.f) + 1000.f;// 11000 -> 2000
                 lpf.setFreq (freqHz);
                 hpf.setFreq (200.f);
+                lpf2.setFreq (freqHz);
+                hpf2.setFreq (200.f);
             }
             break;
         }
@@ -211,11 +209,126 @@ void DubEchoProcessor::parameterValueChanged (int paramIndex, float value)
         }
         case (5):
         {//Time
-            primaryDelay = value / 1000.f * static_cast<float> (sampleRate);
+            // primaryDelay
+            float samplesOfDelay = value / 1000.f * static_cast<float> (sampleRate);
+            
+            delayTime.setTargetValue (samplesOfDelay);
+            
+            if (isSteppedTime)
+            {
+                // if we are currently using buffer1, then we change the time of buffer2 before crossfade
+                if (usingDelayBuffer1)
+                    unit2SteppedDelayTime = samplesOfDelay;
+                else
+                    unit1SteppedDelayTime = samplesOfDelay;
+                
+                duringCrossfade = true; // if we are using steppedTime, and a change to time has occurred, then we need to start a crossfade
+                crossfadeIndex = 0;
+            }
             
             break;
         }
     }
+}
+
+
+float DubEchoProcessor::getDelayedSample (float x, int c)
+{
+    if (isSteppedTime)
+    {
+        return getDelayFromDoubleBuffer (x, c);
+    }
+    else
+    {
+        // If we are using continuous time, then we don't do the double-buffer switching
+        float y = x + wetSmooth[c] * feedbackSample[c];
+
+        auto y_filter = hpf.processSample (y, c);
+        y_filter = lpf.processSample (y_filter, c);
+        
+        float lfoSample = phase.getNextSample (c);
+        float modDelay = static_cast<float> (DEPTH * sin (lfoSample));
+        float sampleDelayTime = delayTime.getNextValue();
+        delayBlock.setDelaySamples (sampleDelayTime + modDelay);
+        feedbackSample[c] = gainSmooth[c] * delayBlock.processSample (y_filter, c);
+        gainSmooth[c] = 0.999f * gainSmooth[c] + 0.001f * feedbackTarget;
+        wetSmooth[c] = 0.9999f * wetSmooth[c] + 0.0001f * wetTarget;
+        return y;
+    }
+}
+
+float DubEchoProcessor::getDelayFromDoubleBuffer (float x, int c)
+{
+    if (duringCrossfade)
+    {
+        return getDelayDuringCrossfade (x, c);
+    }
+    else
+    {
+        
+        float ampA = 0.f, ampB = 1.f;
+        if (usingDelayBuffer1)
+        {
+            ampA = 1.f;
+            ampB = 0.f;
+        }
+                
+        return getDelayWithAmp (x, c, ampA, ampB);
+    }
+}
+
+float DubEchoProcessor::getDelayDuringCrossfade (float x, int c)
+{
+    
+    float amp = static_cast<float> (crossfadeIndex) / static_cast<float> (LENGTHOFCROSSFADE);
+    float ampA;
+    float ampB;
+    if (crossFadeFrom1to2)
+    {
+        ampA = 1.f - amp;
+        ampB = amp;
+    }
+    else
+    {
+        // crossfade from delay buffer 2 to delay buffer 1
+        ampA = amp;
+        ampB = 1.f - amp;
+    }
+    crossfadeIndex++;
+    if (crossfadeIndex == LENGTHOFCROSSFADE)
+    {
+        crossfadeIndex = 0;
+        duringCrossfade = false; // we've reached the end of this crossfade for this time change
+        crossFadeFrom1to2 = !crossFadeFrom1to2; // next time we do a crossfade, it should be from the opposite buffers
+        usingDelayBuffer1 = !usingDelayBuffer1;
+    }
+    
+    return getDelayWithAmp (x, c, ampA, ampB);
+    
+}
+
+
+float DubEchoProcessor::getDelayWithAmp (float x, int c, float ampA, float ampB)
+{
+    float lfoSample = phase.getNextSample (c);
+    float modDelay = static_cast<float> (DEPTH * sin (lfoSample));
+    delayBlock.setDelaySamples (unit1SteppedDelayTime + modDelay);
+    delayUnit2.setDelaySamples (unit2SteppedDelayTime + modDelay);
+
+    float y = ampA * x + wetSmooth[c] * feedbackSample[c];
+    auto y_filter = hpf.processSample (y, c);
+    y_filter = lpf.processSample (y_filter, c);
+    feedbackSample[c] = gainSmooth[c] * delayBlock.processSample (y_filter, c);
+
+    float y2 = ampB * x + wetSmooth[c] * feedbackUnit2[c];
+    y_filter = hpf2.processSample (y2, c);
+    y_filter = lpf2.processSample (y_filter, c);
+    feedbackUnit2[c] = gainSmooth[c] * delayUnit2.processSample (y_filter, c);
+
+    gainSmooth[c] = 0.999f * gainSmooth[c] + 0.001f * feedbackTarget;
+    wetSmooth[c] = 0.9999f * wetSmooth[c] + 0.0001f * wetTarget;
+
+    return y + y2;
 }
 
 }

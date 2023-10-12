@@ -51,19 +51,44 @@ private:
     double sampleRate = 48000.0;
 
     ModulatedDelay delayBlock;
+    ModulatedDelay delayUnit2;// used for stepped processing for cross-fade to avoid doppler changes
+
     float feedbackSample[2] = { 0.f };
+    float feedbackUnit2[2] = { 0.f };
+
     PhaseIncrementer phase;
-    float primaryDelay = 1000.f;
+    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime { 0.0f };
+    float unit1SteppedDelayTime = 0.f;
+    float unit2SteppedDelayTime = 0.f;
 
     DigitalFilter hpf;
     DigitalFilter lpf;
 
-    const float lfoFreq = 0.3f; // subtle, slow modulation
-    const float periodOfCycle = 1.f/lfoFreq;
-    
-    float gainSmooth[2] = { 0.f };
-    float gain;
+    DigitalFilter hpf2;
+    DigitalFilter lpf2;
+
+    const float lfoFreq = 0.3f;// subtle, slow modulation
+    const float periodOfCycle = 1.f / lfoFreq;
+
+    float feedbackTarget = 0.f;
+    float wetTarget = 0.f;
     float wetSmooth[2] = { 0.f };
+    float gain = 0.f;
+    float gainSmooth[2] = { 0.f };
+
+    const float DEPTH = 10.f;
+
+    float getDelayedSample (float x, int channel);
+
+    float getDelayFromDoubleBuffer (float x, int channel);
+    bool usingDelayBuffer1 = true;
+    bool duringCrossfade = false;
+    float getDelayDuringCrossfade (float x, int channel);
+    float getDelayWithAmp (float x, int channel, float ampA, float ampB);
+    const int LENGTHOFCROSSFADE = 1024;
+    int crossfadeIndex = 0;
+
+    bool crossFadeFrom1to2 = true;
 };
 
 }
