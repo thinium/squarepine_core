@@ -83,10 +83,11 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
 
     float wet;
     bool bypass;
+    float periodOfCycle = timeParam->get() / 1000.f;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        phase.setFrequency (1.f / (timeParam->get() / 1000.f));
+        phase.setFrequency (1.f / periodOfCycle);
         bypass = ! fxOnParam->get();
     }
 
@@ -97,8 +98,13 @@ void TransEffectProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, 
 
     double lfoSample;
     //
+    
+    // effectPhaseRelativeToProjectDownBeat needs to be set once per buffer
+    // based on the transport in Track::process
+    
     for (int c = 0; c < numChannels; ++c)
     {
+        phase.setCurrentAngle(effectPhaseRelativeToProjectDownBeat,c);
         for (int n = 0; n < numSamples; ++n)
         {
             lfoSample = phase.getNextSample (c);

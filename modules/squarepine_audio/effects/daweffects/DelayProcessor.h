@@ -50,6 +50,26 @@ private:
     int index[2] = { 0 };
 };
 
+class AllPassDelay
+{
+public:
+    float processSample (float x, int channel);
+
+    void setFs (float _Fs);
+
+    void setDelaySamples (float _delay);
+
+    void setFeedbackAmount (double fb) { feedbackAmount = fb; }
+
+    void clearDelay();
+private:
+    float Fs = 48000.f;
+
+    FractionalDelay delayBlock;
+    double feedbackAmount = 0.0;
+    double feedbackSample[2] = { 0.0 };
+};
+
 //This is a wrapper around Eric Tarr's Fractional Delay class that can be integrated with Juce/Squarepine processors
 // wet/dry is true 50/50 blend (increase + decrease dry/wet)
 // initial value is 500 ms, min=1ms, max = 4000ms
@@ -83,14 +103,27 @@ private:
     NotifiableAudioParameterFloat* timeParam = nullptr;
 
     SmoothedValue<float, ValueSmoothingTypes::Linear> wetDry { 0.0f };
-    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime{ 0.0f };
+    SmoothedValue<float, ValueSmoothingTypes::Linear> delayTime { 0.0f };
 
     NotifiableAudioParameterBool* fxOnParam = nullptr;
 
     int idNumber = 1;
 
-    FractionalDelay delayUnit;
+    ModulatedDelay delayUnit;
+    ModulatedDelay delayUnit2;// used for stepped processing for cross-fade to avoid doppler changes
+
     float sampleRate = 44100.f;
+
+    float getDelayedSample (float x, int channel);
+
+    float getDelayFromDoubleBuffer (float x, int channel);
+    bool usingDelayBuffer1 = true;
+    bool duringCrossfade = false;
+    float getDelayDuringCrossfade (float x, int channel);
+    const int LENGTHOFCROSSFADE = 1024;
+    int crossfadeIndex = 0;
+
+    bool crossFadeFrom1to2 = true;
 };
 
 }

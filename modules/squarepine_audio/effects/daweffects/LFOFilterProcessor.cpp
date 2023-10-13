@@ -77,7 +77,7 @@ LFOFilterProcessor::LFOFilterProcessor (int idNum)
     phaseWarble.setFrequency (3.f);
 
     bpf.setFilterType (DigitalFilter::FilterType::BPF2);
-    bpf.setQ (0.7071f);
+    bpf.setQ (3.0f);
 }
 
 LFOFilterProcessor::~LFOFilterProcessor()
@@ -106,6 +106,7 @@ void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mi
     float wet;
     bool bypass;
     float warble;
+    float periodOfCycle = timeParam->get() / 1000.f;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
@@ -121,8 +122,13 @@ void LFOFilterProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mi
     float lfoSample;
     float warbleSample;
     //
+    
+    // effectPhaseRelativeToProjectDownBeat needs to be set once per buffer
+    // based on the transport in Track::process
+    
     for (int c = 0; c < numChannels; ++c)
     {
+        phase.setCurrentAngle(effectPhaseRelativeToProjectDownBeat,c);
         for (int n = 0; n < numSamples; ++n)
         {
             lfoSample = static_cast<float> (phase.getNextSample (c));

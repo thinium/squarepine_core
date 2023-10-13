@@ -111,6 +111,17 @@ void InternalProcessor::removeProperty (const Identifier& id, UndoManager* um)
 {
     getState().removeProperty (id, um);
 }
+//==============================================================================
+
+void InternalProcessor::setEffectPhaseRelativeToProjectDownBeat(double phaseRelativeToProjectDownBeat)
+{
+    effectPhaseRelativeToProjectDownBeat = phaseRelativeToProjectDownBeat;
+}
+
+void InternalProcessor::setIsInSteppedTimeMode(bool isInSteppedTimeMode)
+{
+    isSteppedTime = isInSteppedTimeMode;
+}
 
 //==============================================================================
 void InternalProcessor::setBypass (const bool shouldBeBypassed)

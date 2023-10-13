@@ -88,11 +88,18 @@ CrushProcessor::~CrushProcessor()
 //============================================================================== Audio processing
 void CrushProcessor::prepareToPlay (double sampleRate, int bufferSize)
 {
-    bitCrusher.prepareToPlay (sampleRate, bufferSize);
+    Fs = sampleRate;
+    
+    downSampler.setRatio (sampleRate, sampleRate);
+    const int numChannels = 2;
+    downSampler.prepare (numChannels);
+    upSampler.prepare (numChannels);
+    
     highPassFilter.setFilterType (DigitalFilter::FilterType::HPF);
     highPassFilter.setFs (sampleRate);
-    delayBlock.setFs (static_cast<float> (sampleRate));
-    dryBuffer = AudioBuffer<float> (2, bufferSize);
+    dryBuffer = AudioBuffer<float> (numChannels, bufferSize);
+    resampledBuffer = AudioBuffer<float> (numChannels, bufferSize);
+    
 }
 void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer& midi)
 {
@@ -115,26 +122,32 @@ void CrushProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
     if (abs(colour) < 0.01f)
         wet = 0.f;
     
+    
     for (int c = 0; c < numChannels; ++c)
     {
         dryBuffer.copyFrom (c, 0, buffer, c, 0, buffer.getNumSamples());
     }
-    bitCrusher.processBlock (buffer, midi);
+    
     highPassFilter.processBuffer (buffer, midi);
+    
+    downFs = (1.1f + (1.f - abs(colour))) * std::powf (10.f, (1.f - abs(colour)) + 3.f); // 1.1k - 22k
+    const auto downSamplingRatio = Fs / downFs;
+    
+    downSampler.setRatio (Fs, downFs);
+    upSampler.setRatio (downFs, Fs);
+    
+    const auto scaledBufferSize = (int) std::round ((double) numSamples / downSamplingRatio);
+    resampledBuffer.setSize (numChannels, scaledBufferSize, false, true, true);
+    downSampler.process (buffer, resampledBuffer);
+    upSampler.process (resampledBuffer, buffer);
 
     for (int c = 0; c < numChannels; ++c)
     {
         for (int n = 0; n < numSamples; ++n)
         {
-            float x = buffer.getWritePointer (c)[n];
-
-            float wetSample = delayBlock.processSample (x, c);
-
-            //float y = x + wetSmooth[c] * wetSample;
-            buffer.getWritePointer (c)[n] = wetSmooth[c] * wetSample * colorSmooth[c];
+            buffer.getWritePointer (c)[n] *= wetSmooth[c];
             dryBuffer.getWritePointer (c)[n] *= (1.f - wetSmooth[c]);
             wetSmooth[c] = 0.999f * wetSmooth[c] + 0.001f * wet;
-            colorSmooth[c] = 0.999f * colorSmooth[c] + 0.001f * colorSign;
         }
         buffer.addFrom (c, 0, dryBuffer, c, 0, buffer.getNumSamples());
     }
@@ -153,18 +166,9 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
     if (paramNum == 2) {}// wet/dry
     else if (paramNum == 3) // "color"
     {
-        float other = otherParam->get();
-        float samplesOfDelay = jmin (15.f, 1.f + abs (value) * 10.f + other * 10.f);
-        delayBlock.setDelaySamples (samplesOfDelay);
         if (value <= 0.f)
         {
             highPassFilter.setFreq (20.0);
-            float normValue = (value * -1.f);
-            // 4 bits -> normValue = 0
-            // 9 bits -> normValue = 1
-            float bitDepth = 5.f * std::sqrt (1.f - normValue) + 4.f;
-            bitCrusher.setBitDepth (bitDepth);
-            colorSign = 1.f;
         }
         else
         {
@@ -172,18 +176,10 @@ void CrushProcessor::parameterValueChanged (int paramNum, float value)
             // freqHz = 20 -> 5000
             float freqHz = 2.f * std::powf (10.f, 3.f * (normValue * 0.8f) + 1.f);
             highPassFilter.setFreq (freqHz);
-            // 9 bits -> value = 0.5, normValue = 0
-            // 4 bits -> value = 1, normValue = 0
-            float bitDepth = 5.f * std::sqrt (1.f - normValue) + 4.f;
-            bitCrusher.setBitDepth (bitDepth);
-            colorSign = -1.f;
         }
     }
     else if (paramNum == 4)// "other"
     {
-        float color = colourParam->get();
-        float samplesOfDelay = jmin (15.f, 1.f + value * 10.f + abs (color) * 10.f);
-        delayBlock.setDelaySamples (samplesOfDelay);
     }
 }
 

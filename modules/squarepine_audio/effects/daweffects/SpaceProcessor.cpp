@@ -169,7 +169,7 @@ void SpaceProcessor::updateReverbParams()
     Reverb::Parameters localParams;
 
     localParams.roomSize = otherParam->get();
-    localParams.damping = 0.5f;//1.f - reverbColourParam->get();
+    localParams.damping = 0.2f;//1.f - reverbColourParam->get();
     localParams.wetLevel = wetDryParam->get();
     localParams.dryLevel = 1.f - wetDryParam->get();
     if (abs(reverbColourParam->get()) < 0.01f)

@@ -23,6 +23,11 @@ public:
         angleChange = frequency * 2.0f * f_PI / Fs;
     }
     
+    void setCurrentAngle (float angleInRadians, int channel)
+    {
+        currentAngle[channel] = angleInRadians;
+    }
+    
 private:
     
     float f_PI = static_cast<float> (M_PI);

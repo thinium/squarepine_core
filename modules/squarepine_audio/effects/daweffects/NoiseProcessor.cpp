@@ -108,7 +108,7 @@ void NoiseProcessor::processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&
         {
             float x = buffer.getWritePointer (c)[n];
 
-            float noise = generator.nextFloat() - 0.5f;// range = -.5 to +.5
+            float noise = 0.125f * (generator.nextFloat() - 0.5f);// (range = -.5 to +.5) scaled -18 dB
 
             auto filterNoise = hpf.processSample (noise, c);
             filterNoise = lpf.processSample (filterNoise, c);
@@ -154,7 +154,7 @@ void NoiseProcessor::parameterValueChanged (int paramIndex, float value)
             else
             {
                 float normValue = 1.f + value;
-                float freqHz = 2.f * std::powf (10.f, normValue * 2.f + 2.f);// 20000 -> 200
+                float freqHz = 2.f * std::powf (10.f, normValue * 3.f + 1.f) + 30.f;// 20030 -> 50
                 lpf.setFreq (freqHz);
                 hpf.setFreq (INITHPF);
                 hpf.setQ (DEFAULTQ);

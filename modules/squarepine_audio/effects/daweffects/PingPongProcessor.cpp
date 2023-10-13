@@ -56,7 +56,6 @@ PingPongProcessor::PingPongProcessor (int idNum)
 
     setPrimaryParameter (wetDryParam);
     setEffectiveInTimeDomain (true);
-
 }
 
 PingPongProcessor::~PingPongProcessor()
@@ -74,10 +73,15 @@ void PingPongProcessor::prepareToPlay (double sampleRate, int bufferSize)
     delayLeft.setFs (Fs);
     delayRight.setFs (Fs);
 
-    delayTime.reset (Fs, 0.5f);
+    delayLeft2.setFs (Fs);
+    delayRight2.setFs (Fs);
+
+    delayTime.reset (Fs, 1.f);
     float samplesOfDelay = timeParam->get() / 1000.f * static_cast<float> (sampleRate);
     delayLeft.setDelaySamples (samplesOfDelay);
     delayRight.setDelaySamples (samplesOfDelay);
+    delayLeft2.setDelaySamples (samplesOfDelay);
+    delayRight2.setDelaySamples (samplesOfDelay);
 }
 void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&)
 {
@@ -86,11 +90,10 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
 
     float wet;
     bool bypass;
-    float feedback = 0.6f;
     {
         const ScopedLock sl (getCallbackLock());
         wet = wetDryParam->get();
-        bypass = !fxOnParam->get();
+        bypass = ! fxOnParam->get();
     }
 
     if (bypass || isBypassed())
@@ -100,22 +103,16 @@ void PingPongProcessor::processAudioBlock (juce::AudioBuffer<float>& buffer, Mid
 
     for (int n = 0; n < numSamples; ++n)
     {
-        float samplesOfDelay = delayTime.getNextValue();
-        delayLeft.setDelaySamples (samplesOfDelay);
-        delayRight.setDelaySamples (samplesOfDelay);
-
         float xL = multibandBuffer.getWritePointer (0)[n];
         float xR = multibandBuffer.getWritePointer (1)[n];
-
-        float xSum = 0.7071f * (xL + xR);
-
-        float dL = delayLeft.processSample (xSum + feedback * z, 0);
-        z = delayRight.processSample (dL, 0);
+        float yL = 0.f;
+        float yR = 0.f;
+        getStereoDelayedSample (xL, xR, yL, yR);
 
         wetSmooth = 0.999f * wetSmooth + 0.001f * wet;
 
-        multibandBuffer.getWritePointer (0)[n] = wetSmooth * dL;
-        multibandBuffer.getWritePointer (1)[n] = wetSmooth * z;
+        multibandBuffer.getWritePointer (0)[n] = wetSmooth * yL;
+        multibandBuffer.getWritePointer (1)[n] = wetSmooth * yR;
 
         float drySmooth = 1.f - wetSmooth;
         buffer.getWritePointer (0)[n] *= (drySmooth);
@@ -156,9 +153,108 @@ void PingPongProcessor::parameterValueChanged (int paramIndex, float value)
             float samplesOfDelay = value / 1000.f * Fs;
             delayTime.setTargetValue (samplesOfDelay);
 
+            if (isSteppedTime)
+            {
+                // if we are currently using buffer1, then we change the time of buffer2 before crossfade
+                if (usingDelayBuffer1)
+                {
+                    delayLeft2.setDelaySamples (samplesOfDelay);
+                    delayRight2.setDelaySamples (samplesOfDelay);
+                }
+                else
+                {
+                    delayLeft.setDelaySamples (samplesOfDelay);
+                    delayRight.setDelaySamples (samplesOfDelay);
+                }
+
+                duringCrossfade = true;// if we are using steppedTime, and a change to time has occurred, then we need to start a crossfade
+                crossfadeIndex = 0;
+            }
+
             break;
         }
     }
+}
+
+void PingPongProcessor::getStereoDelayedSample (float xL, float xR, float& yL, float& yR)
+{
+    if (isSteppedTime)
+    {
+        getDelayFromDoubleBuffer (xL, xR, yL, yR);
+    }
+    else
+    {
+        float samplesOfDelay = delayTime.getNextValue();
+        delayLeft.setDelaySamples (samplesOfDelay);
+        delayRight.setDelaySamples (samplesOfDelay);
+
+        // If we are using continuous time, then we don't do the double-buffer switching
+        float xSum = AMPSUMCHAN * (xL + xR);
+
+        yL = delayLeft.processSample (xSum + feedback * z, 0);
+        z = delayRight.processSample (yL, 0);
+        yR = z;
+    }
+}
+
+void PingPongProcessor::getDelayFromDoubleBuffer (float xL, float xR, float& yL, float& yR)
+{
+    if (duringCrossfade)
+    {
+        getDelayDuringCrossfade (xL, xR, yL, yR);
+    }
+    else
+    {
+        float ampA = 0.f, ampB = 1.f;
+        if (usingDelayBuffer1)
+        {
+            ampA = 1.f;
+            ampB = 0.f;
+        }
+        getDelayWithAmp (xL, xR, yL, yR, ampA, ampB);
+    }
+}
+
+void PingPongProcessor::getDelayDuringCrossfade (float xL, float xR, float& yL, float& yR)
+{
+    float amp = static_cast<float> (crossfadeIndex) / static_cast<float> (LENGTHOFCROSSFADE);
+    float ampA;
+    float ampB;
+    if (crossFadeFrom1to2)
+    {
+        ampA = 1.f - amp;
+        ampB = amp;
+    }
+    else
+    {
+        // crossfade from delay buffer 2 to delay buffer 1
+        ampA = amp;
+        ampB = 1.f - amp;
+    }
+    crossfadeIndex++;
+    if (crossfadeIndex == LENGTHOFCROSSFADE)
+    {
+        crossfadeIndex = 0;
+        duringCrossfade = false;// we've reached the end of this crossfade for this time change
+        crossFadeFrom1to2 = ! crossFadeFrom1to2;// next time we do a crossfade, it should be from the opposite buffers
+        usingDelayBuffer1 = ! usingDelayBuffer1;
+    }
+
+    getDelayWithAmp (xL, xR, yL, yR, ampA, ampB);
+}
+
+void PingPongProcessor::getDelayWithAmp (float xL, float xR, float& yL, float& yR, float ampA, float ampB)
+{
+    float xSum = AMPSUMCHAN * (xL + xR);
+
+    float left1 = delayLeft.processSample (ampA * xSum + feedback * z, 0);
+    z = delayRight.processSample (left1, 0);
+
+    float left2 = delayLeft2.processSample (ampB * xSum + feedback * zUnit2, 0);
+    zUnit2 = delayRight2.processSample (left2, 0);
+
+    yL = left1 + left2;
+    yR = z + zUnit2;
 }
 
 }
