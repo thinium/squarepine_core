@@ -175,7 +175,7 @@ DelayProcessor::DelayProcessor (int idNum)
     reset();
 
     NormalisableRange<float> wetDryRange = { 0.f, 1.f };
-    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 0.5f,
+    auto wetdry = std::make_unique<NotifiableAudioParameterFloat> ("dryWetDelay", "Dry/Wet", wetDryRange, 0.25f,
                                                                    true,// isAutomatable
                                                                    "Dry/Wet",
                                                                    AudioProcessorParameter::genericParameter,
@@ -212,7 +212,7 @@ DelayProcessor::DelayProcessor (int idNum)
     delayUnit.setDelaySamples (initialDelayTime);
     delayUnit2.setDelaySamples (initialDelayTime);
     
-    wetDry.setTargetValue (0.5);
+    wetDry.setTargetValue (0.25);
     delayTime.setTargetValue (initialDelayTime);
 
     wetDryParam = wetdry.get();
