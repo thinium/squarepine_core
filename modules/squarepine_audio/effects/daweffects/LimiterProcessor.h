@@ -44,7 +44,7 @@ public:
     void setEnhanceOn (bool isOn) { enhanceIsOn = isOn; }
     void setTruePeakOn (bool isOn) { truePeakIsOn = isOn; }
     void setAutoCompOn (bool isOn) { autoCompIsOn = isOn; }
-    void setOverSamplingLevel (int level) { OSFactor = level; }
+    void setOverSamplingLevel (int level);
 
     float getGainReduction (bool linear);
     
@@ -54,8 +54,10 @@ private:
     bool bypassed = false;
 
     float Fs = 48000.0f;// Sampling Rate
+    int samplesPerBuffer = 1024;
 
     // Variables for Static Characteristics
+    float ceilingLinearThresh = 0.999f;
     float thresh = -36.0f;// threshold - dB Value
     float linThresh = pow (10.f, thresh / 20.f);
     float ratio = 100.0f;// 1 = "1:1", 2 = "2:1"
@@ -100,6 +102,9 @@ private:
     bool truePeakIsOn = true;
     TruePeakAnalysis truePeakAnalysis;
     AudioBuffer<float> truePeakFrameBuffer;
+    
+    TruePeakAnalysis truePeakPostAnalysis;
+    AudioBuffer<float> truePeakPostBuffer;
 
     int OSFactor = 2;
     static const int OSQuality = 3;

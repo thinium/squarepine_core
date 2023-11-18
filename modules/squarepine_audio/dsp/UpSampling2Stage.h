@@ -6,7 +6,6 @@
 //
 //
 
-// Class definition
 class UpSampling2Stage
 {
 public:
@@ -30,11 +29,6 @@ public:
         // previous samples on both the left and the right.
 
         float x;// Holding variable to keep track of a sample method
-
-        float* temp1;
-        float* temp2;
-        temp1 = tempBuffer;
-        temp2 = tempBuffer2;
 
         for (int s = 0; s < iNumSamples; ++s)
         {
@@ -60,52 +54,38 @@ public:
                 x = *(input++);
                 for (int i = 0; i < 2; ++i)
                 {
-                    //tempBuffer[i] = antiAliasFilter1.process(x,c);
-                    *temp1 = antiAliasFilter1.process (x, c);
-                    ++temp1;
+                    tempBuffer[i] = antiAliasFilter1.process(x,c);
                 }
-                temp1 = tempBuffer;
                 for (int i = 0; i < 2; ++i)
                 {
-                    //x = tempBuffer[i];
-                    x = *(temp1++);
+                    x = tempBuffer[i];
                     for (unsigned int j = 0; j < 2; ++j)
                     {
                         *output = antiAliasFilter2.process (x, c);
                         ++output;
                     }
                 }
-                temp1 = tempBuffer;
             }
             else
             {// upsampling by 8x == upsampling three times by a factor of 2
                 x = *(input++);
                 for (int i = 0; i < 2; ++i)
                 {
-                    //tempBuffer[i] = antiAliasFilter1.process(x,c);
-                    *temp1 = antiAliasFilter1.process (x, c);
-                    ++temp1;
+                    tempBuffer[i] = antiAliasFilter1.process(x,c);
                 }
-                temp1 = tempBuffer;
                 for (int i = 0; i < 2; ++i)
                 {
-                    //x = tempBuffer[i];
-                    x = *(temp1++);
+                    x = tempBuffer[i];
                     for (int j = 0; j < 2; ++j)
                     {
-                        //tempBuffer2[2*i + j] = antiAliasFilter2.process(x,c);
-                        *temp2 = antiAliasFilter2.process (x, c);
-                        ++temp2;
+                        tempBuffer2[2*i + j] = antiAliasFilter2.process(x,c);
                     }
                 }
-                temp1 = tempBuffer;
-                temp2 = tempBuffer2;
                 for (int i = 0; i < 2; ++i)
                 {
                     for (int j = 0; j < 2; ++j)
                     {
-                        //x = tempBuffer2[2*i + j];
-                        x = *(temp2++);
+                        x = tempBuffer2[2*i + j];
                         for (int k = 0; k < 2; ++k)
                         {
                             *output = antiAliasFilter3.process (x, c);
@@ -113,7 +93,6 @@ public:
                         }
                     }
                 }
-                temp2 = tempBuffer2;
             }
         }
     }

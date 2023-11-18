@@ -6,7 +6,6 @@
 //
 //
 
-// Class definition
 class DownSampling2Stage
 {
 public:
@@ -28,11 +27,6 @@ public:
     {
         // Note: c = channel
         float x;
-
-        float* temp1;
-        float* temp2;
-        temp1 = tempBuffer;
-        temp2 = tempBuffer2;
 
         for (int s = 0; s < iNumSamples; ++s)
         {
@@ -67,22 +61,17 @@ public:
                     // Only use every other sample in the tempBuffer (stage 1 of down-sampling)
                     if (i == 0)
                     {
-                        //tempBuffer[0] = x; // Decimation
-                        *temp1 = x;
-                        ++temp1;
+                        tempBuffer[0] = x; // Decimation
                     }
                     if (i == 2)
                     {
-                        //tempBuffer[1] = x; // Decimation
-                        *temp1 = x;
+                        tempBuffer[1] = x; // Decimation
                     }
                 }
-                temp1 = tempBuffer;
                 for (int j = 0; j < 2; ++j)
                 {
                     // Stage 2: 2x->1x
-                    //x = antiAliasFilter2.process(tempBuffer[j],c);
-                    x = antiAliasFilter2.process (*(temp1++), c);
+                    x = antiAliasFilter2.process(tempBuffer[j],c);
 
                     // Only use 1 out of every 2 samples in the output signal
                     if (j == 0)
@@ -91,7 +80,6 @@ public:
                         ++output;
                     }
                 }
-                temp1 = tempBuffer;
             }
             else
             {
@@ -103,55 +91,40 @@ public:
                     // Only use every other sample in the tempBuffer (stage 1 of down-sampling)
                     if (i == 0)
                     {
-                        //tempBuffer2[0] = x; // Decimation
-                        *temp2 = x;
-                        ++temp2;
+                        tempBuffer2[0] = x; // Decimation
                     }
                     if (i == 2)
                     {
-                        //tempBuffer2[1] = x; // Decimation
-                        *temp2 = x;
-                        ++temp2;
+                        tempBuffer2[1] = x; // Decimation
                     }
                     if (i == 4)
                     {
-                        //tempBuffer2[2] = x; // Decimation
-                        *temp2 = x;
-                        ++temp2;
+                        tempBuffer2[2] = x; // Decimation
                     }
                     if (i == 6)
                     {
-                        //tempBuffer2[3] = x; // Decimation
-                        *temp2 = x;
+                        tempBuffer2[3] = x; // Decimation
                     }
                 }
-                temp2 = tempBuffer2;
                 for (int i = 0; i < 4; ++i)
                 {
                     // Stage 2: 4x->2x
-                    //x = antiAliasFilter2.process(tempBuffer2[i],c);
-                    x = antiAliasFilter2.process (*(temp2++), c);
+                    x = antiAliasFilter2.process(tempBuffer2[i],c);
 
                     // Only use every other sample in the tempBuffer (stage 2 of down-sampling)
                     if (i == 0)
                     {
-                        //tempBuffer[0] = x; // Decimation
-                        *temp1 = x;
-                        ++temp1;
+                        tempBuffer[0] = x; // Decimation
                     }
                     if (i == 2)
                     {
-                        //tempBuffer[1] = x; // Decimation
-                        *temp1 = x;
+                        tempBuffer[1] = x; // Decimation
                     }
                 }
-                temp1 = tempBuffer;
-                temp2 = tempBuffer2;
                 for (int j = 0; j < 2; ++j)
                 {
                     // Stage 3: 2x->1x
-                    //x = antiAliasFilter3.process(tempBuffer[j],c);
-                    x = antiAliasFilter3.process (*(temp1++), c);
+                    x = antiAliasFilter3.process(tempBuffer[j],c);
 
                     // Only use 1 out of every 2 samples in the output signal
                     if (j == 0)
@@ -160,7 +133,6 @@ public:
                         ++output;
                     }
                 }
-                temp1 = tempBuffer;
             }
         }
     }
