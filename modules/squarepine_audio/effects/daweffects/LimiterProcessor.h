@@ -48,8 +48,7 @@ public:
 
     float getGainReduction (bool linear);
     
-    void setCeiling(float ceiling_dB);
-    float getCeiling();
+    void reset();
 private:
     bool bypassed = false;
 

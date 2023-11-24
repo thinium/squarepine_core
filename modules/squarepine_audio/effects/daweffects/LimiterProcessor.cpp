@@ -318,30 +318,37 @@ void LimiterProcessor::bypassDelay (AudioBuffer<float>& buffer, AudioBuffer<floa
 
 void LimiterProcessor::setOversampling (bool isOn)
 {
-    overSamplingOn = isOn;
-    if (isOn)
+    if (overSamplingOn != isOn)
     {
-        upbuffer.clear();
-        upsampling.prepare (OSFactor, OSQuality);
-        downsampling.prepare (OSFactor, OSQuality);
+        overSamplingOn = isOn;
+        reset();
+        if (isOn)
+        {
+            upsampling.prepare (OSFactor, OSQuality);
+            downsampling.prepare (OSFactor, OSQuality);
+        }
+        setAttack (attack);
+        setRelease (release);
     }
-    setAttack (attack);
-    setRelease (release);
 }
 
 void LimiterProcessor::setOverSamplingLevel (int level)
 {
     // Level (from ComboBox dropdown) = 0 (none), 1 (2x), 2 (4x), 3 (8x)
-    // OSFactor (internal parameter for oversampling) = 1 (none), 2 (2x), 4 (4x), 8 (8x)d
-    OSFactor = static_cast<int> (pow (2.f, static_cast<float> (level)));
-    if (overSamplingOn)
+    // OSFactor (internal parameter for oversampling) = 1 (none), 2 (2x), 4 (4x), 8 (8x)
+    int newOSFactor = static_cast<int> (pow (2.f, static_cast<float> (level)));
+    if (OSFactor != newOSFactor)
     {
-        upbuffer.clear();
+        OSFactor = newOSFactor;
+        reset();
+        //if (overSamplingOn)
+        //{
         upsampling.prepare (OSFactor, OSQuality);
         downsampling.prepare (OSFactor, OSQuality);
+        //}
+        setAttack (attack);
+        setRelease (release);
     }
-    setAttack (attack);
-    setRelease (release);
 }
 
 void LimiterProcessor::setOfflineOS (bool isOn)
@@ -461,10 +468,6 @@ float LimiterProcessor::getOutputGain()
 {
     return 20.f * log10 (outputGain);
 }
-void LimiterProcessor::setCeiling (float ceiling_dB)
-{
-    ceiling = std::pow (10.f, ceiling_dB / 20.f);
-}
 
 float LimiterProcessor::getGainReduction (bool linear)
 {
@@ -582,6 +585,25 @@ void LimiterProcessor::processAutoComp (AudioBuffer<float>& buffer, AudioBuffer<
 
         delayedBuffer.getWritePointer (0)[n] *= linGain;// Apply to input signal for left channel
         delayedBuffer.getWritePointer (1)[n] *= linGain;// Apply to input signal for right channel
+    }
+}
+
+void LimiterProcessor::reset()
+{
+    upbuffer.clear();
+    lookaheadBuffer.clear();
+    bypassBuffer.clear();
+    truePeakFrameBuffer.clear();
+    truePeakPostBuffer.clear();
+    truePeakAnalysis.reset();
+    truePeakPostAnalysis.reset();
+
+    for (int i = 0; i < LASIZE; ++i)
+    {
+        lookahead[i][0] = 0.f;
+        lookahead[i][1] = 0.f;
+        bypassArray[i][0] = 0.f;
+        bypassArray[i][0] = 0.f;
     }
 }
 
