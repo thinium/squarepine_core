@@ -25,9 +25,11 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
     // Input Gain
     applySmoothGain (buffer, inputGain, inputGainSmooth);
 
+    inputMeterValue = getPeakMeterValue (buffer, true);// should this be before input gain?
+
     lookaheadDelay (buffer, lookaheadBuffer, numChannels, numSamples);
 
-    truePeakAnalysis.fillTruePeakFrameBuffer (lookaheadBuffer, truePeakFrameBuffer, numChannels, numSamples, true);
+    truePeakAnalysis.fillTruePeakFrameBuffer (buffer, truePeakFrameBuffer, numChannels, numSamples, true);
 
     if (bypassed)
     {
@@ -36,6 +38,10 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
 
         return;
     }
+
+    combinedLinearGR = 1.0f;// Reset for each buffer, so it can be referenced for meters
+    autoCompGR = 1.0f;// updated in processAutoComp function
+    limiterGR = 1.0f;
 
     if (autoCompIsOn)
         processAutoComp (buffer, lookaheadBuffer, numChannels, numSamples);
@@ -143,6 +149,10 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
         float truePeakTargetGain = jmin (ceilingLinearThresh / truePeakPostMax, 1.f);
         applyTruePeakGain (buffer, truePeakTargetGain, truePeakGain);
     }
+
+    outputMeterValue = getPeakMeterValue (buffer, false);// should this be before input gain?
+
+    combinedLinearGR = autoCompGR * limiterGR;// store one value per buffer for the GR meter
 }
 
 void LimiterProcessor::processStereoSample (float xL, float xR, float detectSample, float& yL, float& yR)
@@ -187,6 +197,9 @@ void LimiterProcessor::processStereoSample (float xL, float xR, float detectSamp
 
     yL = linA * xL;// Apply to input signal for left channel
     yR = linA * xR;// Apply to input signal for right channel
+
+    if (linA < limiterGR)
+        limiterGR = linA;// Keep one value per buffer that represents the maximum amout of GR
 
     outputGainSmooth = 0.999f * outputGainSmooth + 0.001f * outputGain;
     yL *= outputGainSmooth;
@@ -265,6 +278,9 @@ float LimiterProcessor::processSample (float x, float detectSample, int channel)
     linA = std::pow (10.f, gainSmooth / 20.f);// Determine linear amplitude
 
     y = linA * x;// Apply to input signal
+
+    if (linA < limiterGR)
+        limiterGR = linA;// Keep one value per buffer that represents the maximum amout of GR
 
     //if (enhanceIsOn)
     //    y = enhanceProcess (y);
@@ -385,6 +401,10 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
     indexBYWrite[1] = tempIndex;
     indexBYRead[0] = 0;
     indexBYRead[1] = 0;
+
+    // Meter rise and fall values similar to many DAWs (logic, ableton, pro tools)
+    meterAttack = std::exp (-log (9.f) / (Fs * 0.01f));
+    meterRelease = std::exp (-log (9.f) / (Fs * 0.35f));
 }
 
 void LimiterProcessor::setThreshold (float threshold)
@@ -472,10 +492,10 @@ float LimiterProcessor::getOutputGain()
 float LimiterProcessor::getGainReduction (bool linear)
 {
     if (linear)
-        return gainReduction;
+        return combinedLinearGR;
     // This method can be find the amount of gain reduction at a given time
     // if the interface has a meter or display.
-    return 20.f * log10 (gainReduction);
+    return 20.f * log10 (combinedLinearGR);
 }
 
 float LimiterProcessor::enhanceProcess (float x)
@@ -516,6 +536,35 @@ void LimiterProcessor::applyTruePeakGain (AudioBuffer<float>& buffer, float targ
         buffer.getWritePointer (0)[n] *= smoothGain;
         buffer.getWritePointer (1)[n] *= smoothGain;
     }
+}
+
+float LimiterProcessor::getPeakMeterValue (AudioBuffer<float>& buffer, bool isInput)
+{
+    //const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+
+    float peakValue = 0.f;
+    float smoothedValue;
+    if (isInput)
+        smoothedValue = std::pow (10.f, inputMeterValue.load() / 20.f);// smooth using linear value
+    else
+        smoothedValue = std::pow (10.f, outputMeterValue.load() / 20.f);
+
+    float g = 0.9f;
+    for (int n = 0; n < numSamples; ++n)
+    {
+        peakValue = jmax (abs (buffer.getWritePointer (0)[n]), abs (buffer.getWritePointer (1)[n]));
+        if (peakValue > smoothedValue)
+            g = meterAttack;// Meter Rising
+        else
+            g = meterRelease;// Meter Falling
+
+        smoothedValue = (1.f - g) * peakValue + g * smoothedValue;
+    }
+
+    smoothedValue = jmax (smoothedValue, pow (10.f, METERFLOORVALUE / 20.f));// make sure we have a value that won't be -infinity dB
+
+    return 20.f * log10 (smoothedValue);// convert back to dB
 }
 
 void LimiterProcessor::processAutoComp (AudioBuffer<float>& buffer, AudioBuffer<float>& delayedBuffer, const int numChannels, const int numSamples)
@@ -582,6 +631,9 @@ void LimiterProcessor::processAutoComp (AudioBuffer<float>& buffer, AudioBuffer<
         acGainSmoothPrev = gainSmooth;// Save for the next loop (i.e. delay sample in smoothing filter)
 
         float linGain = std::pow (10.f, gainSmooth / 20.f);// Determine linear amplitude
+
+        if (linGain < autoCompGR)
+            autoCompGR = linGain;// Keep one value per buffer that represents the maximum amount of GR
 
         delayedBuffer.getWritePointer (0)[n] *= linGain;// Apply to input signal for left channel
         delayedBuffer.getWritePointer (1)[n] *= linGain;// Apply to input signal for right channel

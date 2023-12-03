@@ -47,6 +47,8 @@ public:
     void setOverSamplingLevel (int level);
 
     float getGainReduction (bool linear);
+    float getInputMeterValue () { return inputMeterValue; }
+    float getOutputMeterValue () { return outputMeterValue; }
     
     void reset();
 private:
@@ -88,7 +90,18 @@ private:
     // Because this variable needs to be saved from the previous loop for L&R, then it is an array
     float gainSmoothPrev[2] = { 0.0f };// Variable for smoothing on dB scale
 
-    std::atomic<float> linA = 1.0f;// Linear gain multiplied by the input signal at the end of the detection path
+    float linA = 1.0f;// Linear gain multiplied by the input signal at the end of the detection path
+    std::atomic<float> combinedLinearGR = 1.0f; // Combination of Auto-Comp and Limiter Gain Reduction, use this for meters
+    float autoCompGR = 1.0f;
+    float limiterGR = 1.0f;
+    
+    static constexpr float METERFLOORVALUE = -66.f; // in dB
+    std::atomic<float> inputMeterValue = METERFLOORVALUE;
+    std::atomic<float> outputMeterValue = METERFLOORVALUE;
+    float meterAttack = 0.9f; // set in prepare
+    float meterRelease = 0.9f;
+    float getPeakMeterValue (AudioBuffer<float>& buffer, bool isInput);
+    
 
     std::atomic<float> gainReduction = 1.0f;
     
