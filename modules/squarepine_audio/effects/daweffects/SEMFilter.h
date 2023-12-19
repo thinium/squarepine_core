@@ -72,7 +72,7 @@ private:
     float rho;
     float s1[2] = { 0.0f };
     float s2[2] = { 0.0f };
-
+public:
     void updateCoefficients()
     {
         R = 1.f / (2.f * resSmooth.getNextValue());
@@ -162,6 +162,7 @@ private:
     float rho;
     float s1[2] = { 0.0f };
     float s2[2] = { 0.0f };
+public:
 
     void updateCoefficients()
     {
@@ -594,7 +595,7 @@ public:
         }
     }
 
-    void parameterGestureChanged (int, bool) override {}
+    void parameterGestureChanged (int, bool) override {   }
 
     void processBlock (juce::AudioBuffer<float>& buffer, MidiBuffer&) override { process (buffer); }
     //void processBlock (juce::AudioBuffer<double>& buffer, MidiBuffer&) override  { process (buffer); }
@@ -603,6 +604,9 @@ public:
     {
         if (isBypassed())
             return;
+        lpf.updateCoefficients();
+        hpf.updateCoefficients();
+
         const auto numChannels = buffer.getNumChannels();
         const auto numSamples = buffer.getNumSamples();
 
