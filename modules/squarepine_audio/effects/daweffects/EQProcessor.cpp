@@ -69,6 +69,12 @@ public:
         updateSmoothedValue (doubleGain);
     }
 
+    void updateCoefficients()
+    {
+        updateParamsFor (floatProcessor, floatGain.getCurrentValue());
+        updateParamsFor (doubleProcessor, doubleGain.getCurrentValue());
+    }
+
     //==============================================================================
     const FilterType type = FilterType::bandpass;
     double sampleRate = 44100.0;
@@ -85,12 +91,6 @@ public:
 
     std::vector<NotifiableAudioParameterFloat*> parameters;
 private:
-    void updateCoefficients()
-    {
-        updateParamsFor (floatProcessor, floatGain.getCurrentValue());
-        updateParamsFor (doubleProcessor, doubleGain.getCurrentValue());
-    }
-
     //==============================================================================
     template<typename SampleType>
     void updateSmoothedValue (ExponentialSmoothing<SampleType>& smoothedValue)
@@ -105,7 +105,7 @@ private:
                           SampleType currentGain)
     {
         const auto g = currentGain;
-        float freqLimit =  jmin (cutoff->get(), (static_cast<float> (sampleRate) / 2.f) * 0.95f);
+        float freqLimit = jmin (cutoff->get(), (static_cast<float> (sampleRate) / 2.f) * 0.95f);
         const auto c = (SampleType) freqLimit;
         const auto r = (SampleType) resonance->get();
         using Coeffs = Coefficients<SampleType>;
@@ -290,6 +290,13 @@ void EQProcessor::parameterValueChanged (int, float)
     const ScopedLock sl (getCallbackLock());
     for (auto* f: filters)
         f->updateParams();
+}
+
+void EQProcessor::updateCoefficientsOfChildFilters()
+{
+    const ScopedLock sl (getCallbackLock());
+    for (auto* f: filters)
+        f->updateCoefficients();
 }
 
 }

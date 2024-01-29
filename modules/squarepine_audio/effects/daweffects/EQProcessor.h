@@ -39,6 +39,8 @@ public:
 
     void parameterValueChanged (int, float) override;
     void parameterGestureChanged (int, bool) override {}
+    /** This forces an update of coefficients based on parameter values. We should only need to call this when switching between 3 and 4 band mode in the daw*/
+    void updateCoefficientsOfChildFilters();
 private:
     //==============================================================================
     using FilterType = dsp::StateVariableTPTFilterType;
