@@ -114,17 +114,6 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
         }
     }
 
-    if (enhanceIsOn)
-    {
-        for (int c = 0; c < numChannels; ++c){
-            for (int n = 0; n < numSamples; ++n)
-            {
-                float sample = buffer.getWritePointer(c)[n];
-                buffer.getWritePointer(c)[n] = enhanceProcess (sample);
-            }
-        }
-    }
-    
     // Constant Gain Monitoring
     if (constantGainMonitoring)
     {
@@ -134,16 +123,6 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
 
     for (int c = 0; c < numChannels; ++c)
         buffer.copyFrom (c, 0, lookaheadBuffer.getWritePointer (c), numSamples);
-    
-    truePeakPostAnalysis.fillTruePeakFrameBuffer (buffer, truePeakPostBuffer, numChannels, numSamples, true);
-    
-    float truePeakPostMax = truePeakPostBuffer.getMagnitude(0, numSamples);
-    if (truePeakPostMax > ceilingLinearThresh)
-    {
-        DBG(truePeakPostMax);
-        buffer.applyGain(ceilingLinearThresh/truePeakPostMax);
-    }
-    
 }
 
 void LimiterProcessor::processStereoSample (float xL, float xR, float detectSample, float& yL, float& yR)
@@ -273,8 +252,8 @@ float LimiterProcessor::processSample (float x, float detectSample, int channel)
 
     y = linA * x;// Apply to input signal
 
-    //if (enhanceIsOn)
-    //    y = enhanceProcess (y);
+    if (enhanceIsOn)
+        y = enhanceProcess (y);
 
     return y * outputGain;
 }
@@ -335,18 +314,6 @@ void LimiterProcessor::setOversampling (bool isOn)
     setRelease (release);
 }
 
-void LimiterProcessor::setOverSamplingLevel(int level)
-{
-    OSFactor = level;
-    if (overSamplingOn)
-    {
-        upsampling.prepare (OSFactor, OSQuality);
-        downsampling.prepare (OSFactor, OSQuality);
-    }
-    setAttack (attack);
-    setRelease (release);
-}
-
 void LimiterProcessor::setOfflineOS (bool isOn)
 {
     offlineOSOn = isOn;
@@ -355,19 +322,15 @@ void LimiterProcessor::setOfflineOS (bool isOn)
 void LimiterProcessor::prepare (float sampleRate, int bufferSize)
 {
     Fs = sampleRate;
-    samplesPerBuffer = bufferSize;
-    
     // Variables to set if Fs changes
     setAttack (attack);
     setRelease (release);
     truePeakFrameBuffer = AudioBuffer<float> (1, bufferSize);
-    truePeakPostBuffer = AudioBuffer<float> (1, bufferSize);
 
     lookaheadBuffer = AudioBuffer<float> (2, bufferSize);// (numChannels, numSamples)
     bypassBuffer = AudioBuffer<float> (2, bufferSize);// (numChannels, numSamples)
 
-    const int MAX_OS_LEVEL = 8;
-    upbuffer = AudioBuffer<float> (2, bufferSize * MAX_OS_LEVEL);// (numChannels, numSamples)
+    upbuffer = AudioBuffer<float> (2, bufferSize * OSFactor);// (numChannels, numSamples)
     upsampling.prepare (OSFactor, OSQuality);
     downsampling.prepare (OSFactor, OSQuality);
 
@@ -385,8 +348,6 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
 
 void LimiterProcessor::setThreshold (float threshold)
 {
-    // used for true peak hard limit, does not factor in knee, -.1 to ensure true peak stays below limit
-    ceilingLinearThresh = pow (10.f, (threshold-0.2f) / 20.f);
     thresh = jlimit (-64.0f, 0.0f, threshold - knee / 2.f);// accounts for half of knee above thresh for limit level
     linThresh = pow (10.f, thresh / 20.f);
 }
