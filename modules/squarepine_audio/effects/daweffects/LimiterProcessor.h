@@ -61,7 +61,7 @@ private:
     float thresh = -36.0f;// threshold - dB Value
     float linThresh = pow (10.f, thresh / 20.f);
     float ratio = 100.0f;// 1 = "1:1", 2 = "2:1"
-    float knee = 5.f;// Knee width in dB
+    float knee = 1.5f;// Knee width in dB
 
     // Variables for Response Time
     float attack = 0.06f;// Time in seconds
@@ -75,8 +75,7 @@ private:
     float inputGainSmooth = 1.f;
     float inputInvSmooth = 1.f;
     float outputGainSmooth = 1.f;
-    void applyInputSmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
-    void applyOutputSmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
+    void applySmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
     void applyTruePeakGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
 
     float ceiling = -0.1f;
@@ -133,12 +132,6 @@ private:
     int indexLAWrite[2] = { 4800 };// .1 ms
     AudioBuffer<float> lookaheadBuffer;
     void lookaheadDelay (AudioBuffer<float>& buffer, AudioBuffer<float>& delayedBuffer, const int numChannels, const int numSamples);
-    
-    float autoCompArray[LASIZE][2] = { { 0.f } };
-    int indexACRead[2] = { 0 };
-    int indexACWrite[2] = { 4800 };// .1 ms
-    AudioBuffer<float> autoCompBuffer;
-    void autoCompDelay (AudioBuffer<float>& buffer, AudioBuffer<float>& delayedBuffer, const int numChannels, const int numSamples);
 
     float bypassArray[LASIZE][2] = { { 0.f } };
     int indexBYRead[2] = { 0 };
@@ -146,11 +139,6 @@ private:
     AudioBuffer<float> bypassBuffer;
     void bypassDelay (AudioBuffer<float>& buffer, AudioBuffer<float>& delayedBuffer, const int numChannels, const int numSamples);
 
-    float outputGainArray[LASIZE] = {0.f };
-    int indexOGRead = 0;
-    int indexOGWrite = 4800;// .1 ms
-    float outputGainDelay (float env);
-    
     float enhanceProcess (float x);
     float enhanceAmount = 0.2f;// 20 % in Oxford Limiter
     bool enhanceIsOn = true;
