@@ -54,7 +54,7 @@ public:
                 x = *(input++);
                 for (int i = 0; i < 2; ++i)
                 {
-                    tempBuffer[i] = antiAliasFilter1.process (x, c);
+                    tempBuffer[i] = antiAliasFilter1.process(x,c);
                 }
                 for (int i = 0; i < 2; ++i)
                 {
@@ -71,21 +71,21 @@ public:
                 x = *(input++);
                 for (int i = 0; i < 2; ++i)
                 {
-                    tempBuffer[i] = antiAliasFilter1.process (x, c);
+                    tempBuffer[i] = antiAliasFilter1.process(x,c);
                 }
                 for (int i = 0; i < 2; ++i)
                 {
                     x = tempBuffer[i];
                     for (int j = 0; j < 2; ++j)
                     {
-                        tempBuffer2[2 * i + j] = antiAliasFilter2.process (x, c);
+                        tempBuffer2[2*i + j] = antiAliasFilter2.process(x,c);
                     }
                 }
                 for (int i = 0; i < 2; ++i)
                 {
                     for (int j = 0; j < 2; ++j)
                     {
-                        x = tempBuffer2[2 * i + j];
+                        x = tempBuffer2[2*i + j];
                         for (int k = 0; k < 2; ++k)
                         {
                             *output = antiAliasFilter3.process (x, c);

@@ -13,6 +13,7 @@ LimiterProcessor::LimiterProcessor()
     setOverSamplingLevel (2);
     setEnhanceAmount (0);
     setThreshold (-3.0f);
+    setCeiling (-0.1f);
 }
 
 void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
@@ -115,16 +116,15 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
 
     if (enhanceIsOn)
     {
-        for (int c = 0; c < numChannels; ++c)
-        {
+        for (int c = 0; c < numChannels; ++c){
             for (int n = 0; n < numSamples; ++n)
             {
-                float sample = lookaheadBuffer.getWritePointer (c)[n];
-                lookaheadBuffer.getWritePointer (c)[n] = enhanceProcess (sample);
+                float sample = buffer.getWritePointer(c)[n];
+                buffer.getWritePointer(c)[n] = enhanceProcess (sample);
             }
         }
     }
-
+    
     // Constant Gain Monitoring
     if (constantGainMonitoring)
     {
@@ -134,15 +134,16 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
 
     for (int c = 0; c < numChannels; ++c)
         buffer.copyFrom (c, 0, lookaheadBuffer.getWritePointer (c), numSamples);
-
-    if (truePeakIsOn)
+    
+    truePeakPostAnalysis.fillTruePeakFrameBuffer (buffer, truePeakPostBuffer, numChannels, numSamples, true);
+    
+    float truePeakPostMax = truePeakPostBuffer.getMagnitude(0, numSamples);
+    if (truePeakPostMax > ceilingLinearThresh)
     {
-        truePeakPostAnalysis.fillTruePeakFrameBuffer (buffer, truePeakPostBuffer, numChannels, numSamples, true);
-
-        float truePeakPostMax = truePeakPostBuffer.getMagnitude (0, numSamples);
-        float truePeakTargetGain = jmin (ceilingLinearThresh / truePeakPostMax, 1.f);
-        applyTruePeakGain (buffer, truePeakTargetGain, truePeakGain);
+        DBG(truePeakPostMax);
+        buffer.applyGain(ceilingLinearThresh/truePeakPostMax);
     }
+    
 }
 
 void LimiterProcessor::processStereoSample (float xL, float xR, float detectSample, float& yL, float& yR)
@@ -187,6 +188,12 @@ void LimiterProcessor::processStereoSample (float xL, float xR, float detectSamp
 
     yL = linA * xL;// Apply to input signal for left channel
     yR = linA * xR;// Apply to input signal for right channel
+
+    if (enhanceIsOn)
+    {
+        yL = enhanceProcess (yL);
+        yR = enhanceProcess (yR);
+    }
 
     outputGainSmooth = 0.999f * outputGainSmooth + 0.001f * outputGain;
     yL *= outputGainSmooth;
@@ -321,7 +328,6 @@ void LimiterProcessor::setOversampling (bool isOn)
     overSamplingOn = isOn;
     if (isOn)
     {
-        upbuffer.clear();
         upsampling.prepare (OSFactor, OSQuality);
         downsampling.prepare (OSFactor, OSQuality);
     }
@@ -329,14 +335,11 @@ void LimiterProcessor::setOversampling (bool isOn)
     setRelease (release);
 }
 
-void LimiterProcessor::setOverSamplingLevel (int level)
+void LimiterProcessor::setOverSamplingLevel(int level)
 {
-    // Level (from ComboBox dropdown) = 0 (none), 1 (2x), 2 (4x), 3 (8x)
-    // OSFactor (internal parameter for oversampling) = 1 (none), 2 (2x), 4 (4x), 8 (8x)d
-    OSFactor = static_cast<int> (pow (2.f, static_cast<float> (level)));
+    OSFactor = level;
     if (overSamplingOn)
     {
-        upbuffer.clear();
         upsampling.prepare (OSFactor, OSQuality);
         downsampling.prepare (OSFactor, OSQuality);
     }
@@ -353,7 +356,7 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
 {
     Fs = sampleRate;
     samplesPerBuffer = bufferSize;
-
+    
     // Variables to set if Fs changes
     setAttack (attack);
     setRelease (release);
@@ -382,9 +385,9 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
 
 void LimiterProcessor::setThreshold (float threshold)
 {
-    // used for true peak hard limit, does not factor in knee, -.3 to ensure true peak stays below limit
-    ceilingLinearThresh = pow (10.f, (threshold - 0.3f) / 20.f);
-    thresh = jlimit (-64.0f, 0.0f, (threshold - 0.3f) - knee / 2.f);// accounts for half of knee above thresh for limit level
+    // used for true peak hard limit, does not factor in knee, -.1 to ensure true peak stays below limit
+    ceilingLinearThresh = pow (10.f, (threshold-0.2f) / 20.f);
+    thresh = jlimit (-64.0f, 0.0f, threshold - knee / 2.f);// accounts for half of knee above thresh for limit level
     linThresh = pow (10.f, thresh / 20.f);
 }
 
@@ -497,19 +500,6 @@ void LimiterProcessor::applySmoothGain (AudioBuffer<float>& buffer, float target
     for (int n = 0; n < numSamples; ++n)
     {
         smoothGain = 0.999f * smoothGain + 0.001f * targetGain;
-        buffer.getWritePointer (0)[n] *= smoothGain;
-        buffer.getWritePointer (1)[n] *= smoothGain;
-    }
-}
-
-void LimiterProcessor::applyTruePeakGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain)
-{
-    //const int numChannels = buffer.getNumChannels();
-    const int numSamples = buffer.getNumSamples();
-
-    for (int n = 0; n < numSamples; ++n)
-    {
-        smoothGain = 0.9f * smoothGain + 0.1f * targetGain;
         buffer.getWritePointer (0)[n] *= smoothGain;
         buffer.getWritePointer (1)[n] *= smoothGain;
     }

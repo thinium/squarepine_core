@@ -57,27 +57,27 @@ private:
     int samplesPerBuffer = 1024;
 
     // Variables for Static Characteristics
+    float ceilingLinearThresh = 0.999f;
     float thresh = -36.0f;// threshold - dB Value
     float linThresh = pow (10.f, thresh / 20.f);
     float ratio = 100.0f;// 1 = "1:1", 2 = "2:1"
-    float knee = 1.5f;// Knee width in dB
+    float knee = 1.0f;// Knee width in dB
 
     // Variables for Response Time
     float attack = 0.06f;// Time in seconds
     float release = 0.4f;// Time in seconds
 
     // Gain Variables
-    float ceilingLinearThresh = 0.999f;
-    float truePeakGain = 1.f;
     float inputGain = 1.f;
     float outputGain = 1.f;
     float inputGainSmooth = 1.f;
     float inputInvSmooth = 1.f;
     float outputGainSmooth = 1.f;
-    void applySmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
-    void applyTruePeakGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
+    
 
     float ceiling = -0.1f;
+    
+    void applySmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
     float applyCeilingReduction(float& value, bool isLeft);
     
     
@@ -102,7 +102,7 @@ private:
     bool truePeakIsOn = true;
     TruePeakAnalysis truePeakAnalysis;
     AudioBuffer<float> truePeakFrameBuffer;
-
+    
     TruePeakAnalysis truePeakPostAnalysis;
     AudioBuffer<float> truePeakPostBuffer;
 
