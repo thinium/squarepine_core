@@ -436,7 +436,7 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
     upsampling.prepare (OSFactor, OSQuality);
     downsampling.prepare (OSFactor, OSQuality);
 
-    int lookAheadSamples = 16;
+    int lookAheadSamples = 8;
     indexLAWrite[0] = lookAheadSamples;
     indexLAWrite[1] = lookAheadSamples;
     indexLARead[0] = 0;
@@ -464,9 +464,9 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
 void LimiterProcessor::setThreshold (float threshold)
 {
     // used for true peak hard limit, does not factor in knee, -.3 to ensure true peak stays below limit
-    ceilingLinearThresh = pow (10.f, (threshold - 0.5f) / 20.f);
-    thresh = jlimit (-64.0f, 0.0f, (threshold - 0.5f) - knee / 2.f);// accounts for half of knee above thresh for limit level
-    linThresh = pow (10.f, ceilingLinearThresh / 20.f);
+    ceilingLinearThresh = pow (10.f, (threshold - 0.3f) / 20.f);
+    thresh = jlimit (-64.0f, 0.0f, (threshold - 0.3f) - knee / 2.f);// accounts for half of knee above thresh for limit level
+    linThresh = pow (10.f, thresh / 20.f);
 }
 
 float LimiterProcessor::getThreshold()
@@ -512,7 +512,7 @@ float LimiterProcessor::getAttack()
 
 void LimiterProcessor::setRelease (float rel)
 {
-    release = rel;
+    release = jlimit (0.01f, 1.0f, rel);
     if (overSamplingOn)
         alphaR = expf (-logf (9.0f) / (Fs * static_cast<float> (OSFactor) * release));
     else
@@ -556,17 +556,17 @@ float LimiterProcessor::getGainReduction (bool linear)
 float LimiterProcessor::enhanceProcess (float x)
 {
     float y;
-    //x = (1.f / linThresh) * x;
+    x = (0.9f / linThresh) * x;
     
-    if (x > linThresh) {
-        y = linThresh;
+    if (x > 1) {
+        y = 1;
     }
-    else if (x < -linThresh) {
-        y = -linThresh;
+    else if (x < -1) {
+        y = -1;
     }
-    else { y = x; } //(3.f/2.f) * (x - (1.f/3.f) * std::powf(x,3.f)); }
+    else { y = (3.f/2.f) * (x - (1.f/3.f) * std::powf(x,3.f)); }
     
-    //y *= linThresh;
+    y *= linThresh;
     
     return y;
 }
@@ -608,16 +608,10 @@ void LimiterProcessor::applyTruePeakGain (AudioBuffer<float>& buffer, float targ
 {
     //const int numChannels = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    float alpha;
-    if (targetGain < smoothGain)
-        alpha = 0.9f;
-    else
-        alpha = 0.99f;
-    
-    float oneMinusAlpha = 1.f - alpha;
+
     for (int n = 0; n < numSamples; ++n)
     {
-        smoothGain = alpha * smoothGain + oneMinusAlpha * targetGain;
+        smoothGain = 0.9f * smoothGain + 0.1f * targetGain;
         buffer.getWritePointer (0)[n] *= smoothGain;
         buffer.getWritePointer (1)[n] *= smoothGain;
     }
@@ -744,10 +738,7 @@ void LimiterProcessor::reset()
         lookahead[i][0] = 0.f;
         lookahead[i][1] = 0.f;
         bypassArray[i][0] = 0.f;
-        bypassArray[i][1] = 0.f;
-        autoCompArray[i][0] = 0.f;
-        autoCompArray[i][1] = 0.f;
-        outputGainArray[i] = 0.f;
+        bypassArray[i][0] = 0.f;
     }
 }
 
