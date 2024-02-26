@@ -7,13 +7,13 @@ namespace djdawprocessor
 LimiterProcessor::LimiterProcessor()
 {
     setThreshold (-0.1f);
-    setKnee (1.5f);
+    setKnee (0.5f);
     setInputGain (0.f);
     setOutputGain (-0.1f);
-    setOversampling(true);
+    setOversampling (true);
     setOverSamplingLevel (2);
     setEnhanceAmount (0);
-    setEnhanceOn(false);
+    setEnhanceOn (false);
 }
 
 void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
@@ -26,7 +26,7 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
     // Input Gain
     //if (inputGain < 1)
     //    int test = 1;
-    
+
     applyInputSmoothGain (buffer, inputGain, inputGainSmooth);
     //applyInputSmoothGain (lookaheadBuffer, inputGain, lookaheadGainSmooth); // scale
 
@@ -49,7 +49,7 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
         autoCompDelay (buffer, autoCompBuffer, numChannels, numSamples);
         processAutoComp (buffer, autoCompBuffer, numChannels, numSamples);
     }
-        
+
     lookaheadDelay (buffer, lookaheadBuffer, numChannels, numSamples);
 
     truePeakAnalysis.fillTruePeakFrameBuffer (buffer, truePeakFrameBuffer, numChannels, numSamples, true);
@@ -141,7 +141,6 @@ void LimiterProcessor::processBuffer (AudioBuffer<float>& buffer)
 
     // Constant Gain Monitoring (on/off) is handled internally
     applyOutputSmoothGain (lookaheadBuffer, inputGain, inputInvSmooth);
-    
 
     for (int c = 0; c < numChannels; ++c)
         buffer.copyFrom (c, 0, lookaheadBuffer.getWritePointer (c), numSamples);
@@ -333,7 +332,6 @@ void LimiterProcessor::bypassDelay (AudioBuffer<float>& buffer, AudioBuffer<floa
 
 float LimiterProcessor::outputGainDelay (float x)
 {
-
     outputGainArray[indexOGWrite] = x;
     float delayedValue = outputGainArray[indexOGRead];
 
@@ -346,7 +344,6 @@ float LimiterProcessor::outputGainDelay (float x)
         indexOGRead = 0;
 
     return delayedValue;
-    
 }
 
 void LimiterProcessor::setOversampling (bool isOn)
@@ -420,7 +417,7 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
     indexACWrite[1] = tempIndex;
     indexACRead[0] = 0;
     indexACRead[1] = 0;
-    
+
     indexBYWrite[0] = lookAheadSamples;
     indexBYWrite[1] = lookAheadSamples;
     indexBYRead[0] = 0;
@@ -428,7 +425,7 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
 
     indexOGWrite = lookAheadSamples;
     indexOGRead = 0;
-    
+
     // Meter rise and fall values similar to many DAWs (logic, ableton, pro tools)
     meterAttack = std::exp (-log (9.f) / (Fs * 0.01f));
     meterRelease = std::exp (-log (9.f) / (Fs * 0.35f));
@@ -437,8 +434,8 @@ void LimiterProcessor::prepare (float sampleRate, int bufferSize)
 void LimiterProcessor::setThreshold (float threshold)
 {
     // used for true peak hard limit, does not factor in knee, -.3 to ensure true peak stays below limit
-    ceilingLinearThresh = pow (10.f, (threshold - 0.5f) / 20.f);
-    thresh = jlimit (-64.0f, 0.0f, (threshold - 0.5f) - knee / 2.f);// accounts for half of knee above thresh for limit level
+    ceilingLinearThresh = pow (10.f, (threshold) / 20.f);
+    thresh = jlimit (-64.0f, 0.0f, (threshold) -knee / 2.f);// accounts for half of knee above thresh for limit level
     linThresh = pow (10.f, ceilingLinearThresh / 20.f);
 }
 
@@ -470,7 +467,7 @@ float LimiterProcessor::getKnee()
 void LimiterProcessor::setAttack (float att)
 {
     //attack = jlimit (0.001f, 0.5f, att);
-    attack = att * 0.1f; // factor in lookahead
+    attack = att * 0.1f;// factor in lookahead
     // Convert time in seconds to a coefficient value for the smoothing filter
     if (overSamplingOn)
         alphaA = expf (-logf (9.0f) / (Fs * static_cast<float> (OSFactor) * attack));
@@ -530,17 +527,22 @@ float LimiterProcessor::enhanceProcess (float x)
 {
     float y;
     //x = (1.f / linThresh) * x;
-    
-    if (x > linThresh) {
+
+    if (x > linThresh)
+    {
         y = linThresh;
     }
-    else if (x < -linThresh) {
+    else if (x < -linThresh)
+    {
         y = -linThresh;
     }
-    else { y = x; } //(3.f/2.f) * (x - (1.f/3.f) * std::powf(x,3.f)); }
-    
+    else
+    {
+        y = x;
+    }//(3.f/2.f) * (x - (1.f/3.f) * std::powf(x,3.f)); }
+
     //y *= linThresh;
-    
+
     return y;
 }
 
@@ -565,12 +567,12 @@ void LimiterProcessor::applyOutputSmoothGain (AudioBuffer<float>& buffer, float 
 
     for (int n = 0; n < numSamples; ++n)
     {
-        smoothGain = 0.999f * smoothGain + 0.001f * targetGain; // always smooth gain so it exactly follows the input gain
-        float delayedGain = outputGainDelay(smoothGain); // need to delay to factor in lookahead latency
+        smoothGain = 0.999f * smoothGain + 0.001f * targetGain;// always smooth gain so it exactly follows the input gain
+        float delayedGain = outputGainDelay (smoothGain);// need to delay to factor in lookahead latency
         if (constantGainMonitoring)
         {
             // only apply the gain if constant gain monitoring is on
-            float outputSmoothGain = 1.f/delayedGain; // output applies the inverse gain
+            float outputSmoothGain = 1.f / delayedGain;// output applies the inverse gain
             buffer.getWritePointer (0)[n] *= outputSmoothGain;
             buffer.getWritePointer (1)[n] *= outputSmoothGain;
         }
@@ -586,7 +588,7 @@ void LimiterProcessor::applyTruePeakGain (AudioBuffer<float>& buffer, float targ
         alpha = 0.9f;
     else
         alpha = 0.99f;
-    
+
     float oneMinusAlpha = 1.f - alpha;
     for (int n = 0; n < numSamples; ++n)
     {
@@ -695,10 +697,10 @@ void LimiterProcessor::processAutoComp (AudioBuffer<float>& buffer, AudioBuffer<
 
         delayedBuffer.getWritePointer (0)[n] *= linGain;// Apply to input signal for left channel
         delayedBuffer.getWritePointer (1)[n] *= linGain;// Apply to input signal for right channel
-        
+
         // Need to copy back to buffer in order that the limiter is responding to the compressed signal
-        buffer.getWritePointer(0)[n] = delayedBuffer.getWritePointer (0)[n];
-        buffer.getWritePointer(1)[n] = delayedBuffer.getWritePointer (1)[n];
+        buffer.getWritePointer (0)[n] = delayedBuffer.getWritePointer (0)[n];
+        buffer.getWritePointer (1)[n] = delayedBuffer.getWritePointer (1)[n];
     }
 }
 
