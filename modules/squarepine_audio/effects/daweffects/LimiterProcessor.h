@@ -44,41 +44,41 @@ public:
     void setEnhanceOn (bool isOn) { enhanceIsOn = isOn; }
     void setTruePeakOn (bool isOn) { truePeakIsOn = isOn; }
     void setAutoCompOn (bool isOn) { autoCompIsOn = isOn; }
-    void setOverSamplingLevel (int level) { OSFactor = level; }
+    void setOverSamplingLevel (int level);
 
     float getGainReduction (bool linear);
+    float getInputMeterValue () { return inputMeterValue; }
+    float getOutputMeterValue () { return outputMeterValue; }
     
-    void setCeiling(float ceiling_dB);
-    float getCeiling();
+    void reset();
 private:
     bool bypassed = false;
 
     float Fs = 48000.0f;// Sampling Rate
+    int samplesPerBuffer = 1024;
 
     // Variables for Static Characteristics
     float thresh = -36.0f;// threshold - dB Value
     float linThresh = pow (10.f, thresh / 20.f);
     float ratio = 100.0f;// 1 = "1:1", 2 = "2:1"
-    float knee = 1.0f;// Knee width in dB
+    float knee = 5.f;// Knee width in dB
 
     // Variables for Response Time
     float attack = 0.06f;// Time in seconds
     float release = 0.4f;// Time in seconds
 
     // Gain Variables
+    float ceilingLinearThresh = 0.999f;
+    float truePeakGain = 1.f;
     float inputGain = 1.f;
     float outputGain = 1.f;
     float inputGainSmooth = 1.f;
     float inputInvSmooth = 1.f;
     float outputGainSmooth = 1.f;
-    
+    void applyInputSmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
+    void applyOutputSmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
+    void applyTruePeakGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
 
-    float ceiling = -0.1f;
-    
-    void applySmoothGain (AudioBuffer<float>& buffer, float targetGain, float& smoothGain);
-    float applyCeilingReduction(float& value, bool isLeft);
-    
-    
     bool constantGainMonitoring = false;
 
     float alphaA = 0.999f;// smoothing parameter for attack
@@ -87,19 +87,25 @@ private:
     // Because this variable needs to be saved from the previous loop for L&R, then it is an array
     float gainSmoothPrev[2] = { 0.0f };// Variable for smoothing on dB scale
 
-    std::atomic<float> linA = 1.0f;// Linear gain multiplied by the input signal at the end of the detection path
-
-    std::atomic<float> gainReduction = 1.0f;
+    float linA = 1.0f;// Linear gain multiplied by the input signal at the end of the detection path
+    std::atomic<float> combinedLinearGR = 1.0f; // Combination of Auto-Comp and Limiter Gain Reduction, use this for meters
+    float autoCompGR = 1.0f;
+    float limiterGR = 1.0f;
     
-    float additionalGainReductionL = 0.f;
-    float additionalGainReductionR = 0.f;
-    float additionalGainReductionSmoothL = 0.f;
-    float additionalGainReductionSmoothR = 0.f;
-
+    static constexpr float METERFLOORVALUE = -66.f; // in dB
+    std::atomic<float> inputMeterValue = METERFLOORVALUE;
+    std::atomic<float> outputMeterValue = METERFLOORVALUE;
+    float meterAttack = 0.9f; // set in prepare
+    float meterRelease = 0.9f;
+    float getPeakMeterValue (AudioBuffer<float>& buffer, bool isInput);
     
+
     bool truePeakIsOn = true;
     TruePeakAnalysis truePeakAnalysis;
     AudioBuffer<float> truePeakFrameBuffer;
+
+    TruePeakAnalysis truePeakPostAnalysis;
+    AudioBuffer<float> truePeakPostBuffer;
 
     int OSFactor = 2;
     static const int OSQuality = 3;
@@ -115,6 +121,12 @@ private:
     int indexLAWrite[2] = { 4800 };// .1 ms
     AudioBuffer<float> lookaheadBuffer;
     void lookaheadDelay (AudioBuffer<float>& buffer, AudioBuffer<float>& delayedBuffer, const int numChannels, const int numSamples);
+    
+    float autoCompArray[LASIZE][2] = { { 0.f } };
+    int indexACRead[2] = { 0 };
+    int indexACWrite[2] = { 4800 };// .1 ms
+    AudioBuffer<float> autoCompBuffer;
+    void autoCompDelay (AudioBuffer<float>& buffer, AudioBuffer<float>& delayedBuffer, const int numChannels, const int numSamples);
 
     float bypassArray[LASIZE][2] = { { 0.f } };
     int indexBYRead[2] = { 0 };
@@ -122,6 +134,11 @@ private:
     AudioBuffer<float> bypassBuffer;
     void bypassDelay (AudioBuffer<float>& buffer, AudioBuffer<float>& delayedBuffer, const int numChannels, const int numSamples);
 
+    float outputGainArray[LASIZE] = {0.f };
+    int indexOGRead = 0;
+    int indexOGWrite = 4800;// .1 ms
+    float outputGainDelay (float env);
+    
     float enhanceProcess (float x);
     float enhanceAmount = 0.2f;// 20 % in Oxford Limiter
     bool enhanceIsOn = true;
