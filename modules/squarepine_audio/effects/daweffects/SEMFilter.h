@@ -1,4 +1,3 @@
-
 // This model is based on the Virtual Analog analysis
 // by Will Pirkle in Ch 7 of Designing Synthesizer Software textbook
 
@@ -487,8 +486,8 @@ public:
         : idNumber (idNum)
     {
         reset();
-
-        NormalisableRange<float> freqRange = { -1.f, 1.f };
+        // These values represent 100hz and 8000hz respectively
+        NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
         auto normFreq = std::make_unique<NotifiableAudioParameterFloat> ("freqSEM", "Frequency", freqRange, 0.0f,
                                                                          true,// isAutomatable
                                                                          "Cut-off",
@@ -502,16 +501,22 @@ public:
                                                                              {
                                                                                  float posFreq = value + 1.f;
                                                                                  float freqHz = 2.f * std::powf (10.f, 3.f * posFreq + 1.f);
+                                                                                 // For now, use int for min
+                                                                                 if (static_cast<int> (freqHz) == 100)
+                                                                                     freqHz = 100;
                                                                                  return String (freqHz, 0);
                                                                              }
                                                                              else
                                                                              {
                                                                                  float freqHz = 2.f * std::powf (10.f, 3.f * value + 1.f);
+                                                                                 // For now, use int for max
+                                                                                 if (static_cast<int> (freqHz) == 8000)
+                                                                                     freqHz = 8000;
                                                                                  return String (freqHz, 0);
                                                                              }
                                                                          });
 
-        NormalisableRange<float> qRange = { 0.1f, 10.f };
+        NormalisableRange<float> qRange = { 0.0f, 10.f };
         auto res = std::make_unique<NotifiableAudioParameterFloat> ("resSEM", "resonance", qRange, 0.7071f,
                                                                     true,// isAutomatable
                                                                     "Q",
