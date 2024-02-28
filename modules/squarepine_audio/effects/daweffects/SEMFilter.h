@@ -550,7 +550,8 @@ public:
     {
         const ScopedLock sl (getCallbackLock());
         lpf.prepareToPlay (Fs, bufferSize);
-        hpf.prepareToPlay (Fs, bufferSize);
+        hpf1.prepareToPlay (Fs, bufferSize);
+        hpf2.prepareToPlay (Fs, bufferSize);
         mixLPF.reset (Fs, 0.001f);
         mixHPF.reset (Fs, 0.001f);
         setRateAndBufferSizeDetails (Fs, bufferSize);
@@ -570,7 +571,8 @@ public:
         if (paramNum == 1)
         {// Frequency change
             lpf.setNormFreq (jmin (1.f, value + 1.f));
-            hpf.setNormFreq (jmax (0.0001f, value));
+            hpf1.setNormFreq (jmax (0.0001f, value));
+            hpf2.setNormFreq (jmax (0.0001f, value));
 
             if (value < 0.f)
             {
@@ -591,7 +593,8 @@ public:
         else
         {// Resonance change
             lpf.setQValue (value);
-            hpf.setQValue (value);
+            hpf1.setQValue (value);
+            hpf2.setQValue (value);
         }
     }
 
@@ -605,14 +608,15 @@ public:
         if (isBypassed())
             return;
         lpf.updateCoefficients();
-        hpf.updateCoefficients();
+        hpf1.updateCoefficients();
+        hpf2.updateCoefficients();
 
         const auto numChannels = buffer.getNumChannels();
         const auto numSamples = buffer.getNumSamples();
 
         const ScopedLock sl (getCallbackLock());
 
-        float x, y, mix;
+        float x, y, mix, hpv;
         for (int c = 0; c < numChannels; ++c)
         {
             for (int s = 0; s < numSamples; ++s)
@@ -622,7 +626,9 @@ public:
                 y = (1.f - mix) * x + mix * lpf.processSample (x, c);
 
                 mix = mixHPF.getNextValue();
-                y = (1.f - mix) * y + mix * (float) hpf.processSample (y, c);
+                hpv = (float) hpf1.processSample (y, c);
+                hpv = (float) hpf2.processSample (hpv, c);
+                y = (1.f - mix) * y + mix * hpv;
                 buffer.getWritePointer (c)[s] = y;
             }
         }
@@ -632,7 +638,8 @@ public:
     {
         normFreqParam->setValueNotifyingHost (newNormFreq);
         lpf.setNormFreq (newNormFreq);
-        hpf.setNormFreq (newNormFreq);
+        hpf1.setNormFreq (newNormFreq);
+        hpf2.setNormFreq (newNormFreq);
 
         if (newNormFreq < 0.f)
         {
@@ -656,7 +663,9 @@ public:
     {
         resParam->setValueNotifyingHost (q);
         lpf.setQValue (q);
-        hpf.setQValue (q);
+        hpf1.setQValue (q);
+        hpf2.setQValue (q);
+
     }
     void setID (int idNum)
     {
@@ -675,7 +684,7 @@ private:
     int idNumber = 1;
 
     SEMLowPassFilter lpf;
-    SEMHighPassFilter hpf;
+    SEMHighPassFilter hpf1, hpf2;
 };
 
 }
