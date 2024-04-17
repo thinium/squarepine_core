@@ -488,33 +488,43 @@ public:
         reset();
         // These values represent 100hz and 8000hz respectively
         NormalisableRange<float> freqRange = { -0.7670f, 0.867365f };
-        auto normFreq = std::make_unique<NotifiableAudioParameterFloat> ("freqSEM", "Frequency", freqRange, 0.0f,
+
+        // call back to convert a value to a display string in Hz
+        auto stringFromValue = [] (float value, int) -> String
+        {
+            // TODO: use approximatelyEqual when it's finally fixed
+            if (abs (value) < 0.0001f)
+                return "BYP";
+
+            if (value < 0.0f)
+            {
+                // low-pass filter
+                float posFreq = value + 1.f;
+                float freqHz = 2.f * std::powf (10.f, 3.f * posFreq + 1.f);
+                // For now, use int for min
+                if (static_cast<int> (freqHz) == 100)
+                    freqHz = 100;
+                return String (freqHz, 0);
+            }
+            else
+            {
+                // hi-pass filter
+                float freqHz = 2.f * std::powf (10.f, 3.f * value + 1.f);
+                // For now, use int for max
+                if (static_cast<int> (freqHz) == 8000)
+                    freqHz = 8000;
+                return String (freqHz, 0);
+            }
+        };
+
+        auto normFreq = std::make_unique<NotifiableAudioParameterFloat> ("freqSEM",
+                                                                         "Frequency",
+                                                                         freqRange,
+                                                                         0.0f,
                                                                          true,// isAutomatable
                                                                          "Cut-off",
                                                                          AudioProcessorParameter::genericParameter,
-                                                                         [] (float value, int) -> String
-                                                                         {
-                                                                             if (approximatelyEqual (value, 0.0f))
-                                                                                 return "BYP";
-
-                                                                             if (value < 0.0f)
-                                                                             {
-                                                                                 float posFreq = value + 1.f;
-                                                                                 float freqHz = 2.f * std::powf (10.f, 3.f * posFreq + 1.f);
-                                                                                 // For now, use int for min
-                                                                                 if (static_cast<int> (freqHz) == 100)
-                                                                                     freqHz = 100;
-                                                                                 return String (freqHz, 0);
-                                                                             }
-                                                                             else
-                                                                             {
-                                                                                 float freqHz = 2.f * std::powf (10.f, 3.f * value + 1.f);
-                                                                                 // For now, use int for max
-                                                                                 if (static_cast<int> (freqHz) == 8000)
-                                                                                     freqHz = 8000;
-                                                                                 return String (freqHz, 0);
-                                                                             }
-                                                                         });
+                                                                         stringFromValue);
 
         NormalisableRange<float> qRange = { 0.0f, 10.f };
         auto res = std::make_unique<NotifiableAudioParameterFloat> ("resSEM", "resonance", qRange, 0.7071f,
