@@ -574,12 +574,20 @@ public:
     {
         const ScopedLock sl (getCallbackLock());
         if (paramNum == 1)
-        {// Frequency change
+        {
+            // Frequency change
             lpf.setNormFreq (jmin (1.f, value + 1.f));
             hpf1.setNormFreq (jmax (0.0001f, value));
             hpf2.setNormFreq (jmax (0.0001f, value));
 
-            if (value < 0.f)
+            // if cutoff is set to bypass mode, switch off both processing
+            // TODO: use approximatelyEqual when it's finally fixed
+            if (abs (value) < 0.0001f)
+            {
+                mixLPF.setTargetValue (0.f);
+                mixHPF.setTargetValue (0.f);
+            }
+            else if (value < 0.f)
             {
                 mixLPF.setTargetValue (1.f);
                 mixHPF.setTargetValue (0.f);
@@ -588,11 +596,6 @@ public:
             {
                 mixLPF.setTargetValue (0.f);
                 mixHPF.setTargetValue (1.f);
-            }
-            else
-            {
-                mixLPF.setTargetValue (0.f);
-                mixHPF.setTargetValue (0.f);
             }
         }
         else
@@ -610,8 +613,14 @@ public:
 
     void process (juce::AudioBuffer<float>& buffer)
     {
+        // If the device is turned off, don't process
         if (isBypassed())
             return;
+
+        // If the current value is 0.0, also bypass
+        if (abs (normFreqParam->get()) < 0.0001f)
+            return;
+
         lpf.updateCoefficients();
         hpf1.updateCoefficients();
         hpf2.updateCoefficients();
